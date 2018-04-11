@@ -24,23 +24,23 @@ public class PostUtil {
                               String method,
                               String parameter,
                               HttpServletRequest req) {
-        InvocationContext invocationCtx = InvocationContextImpl.Factory.getCurrentInstance();
-        invocationCtx.setServiceName(service);
-        invocationCtx.setVersionName(version);
-        invocationCtx.setMethodName(method);
-        invocationCtx.setCallerFrom(Optional.of("JsonCaller"));
+        InvocationContextImpl invocationCtx = (InvocationContextImpl) InvocationContextImpl.Factory.currentInstance();
+        invocationCtx.serviceName(service);
+        invocationCtx.versionName(version);
+        invocationCtx.methodName(method);
+        invocationCtx.callerMid(req.getRequestURI());
         //设置请求超时时间 10 s
-        invocationCtx.setTimeout(Optional.of(120000L));
-        LOGGER.info("<=========>   timeout:" + invocationCtx.getTimeout());
+        invocationCtx.timeout(120000);
+        LOGGER.info("<=========>   timeout:" + invocationCtx.timeout());
 
         Service bizService = ServiceCache.getService(service, version);
 
         fillInvocationCtx(invocationCtx, req);
 
-        JsonPost jsonPost = new JsonPost(service, method, true);
+        JsonPost jsonPost = new JsonPost(service, version, method, true);
 
         try {
-            return jsonPost.callServiceMethod(invocationCtx, parameter, bizService);
+            return jsonPost.callServiceMethod(parameter, bizService);
         } catch (SoaException e) {
 
             LOGGER.error(e.getMsg(), e);
@@ -58,31 +58,23 @@ public class PostUtil {
     private static void fillInvocationCtx(InvocationContext invocationCtx, HttpServletRequest req) {
         Set<String> parameters = req.getParameterMap().keySet();
         if (parameters.contains("calleeIp")) {
-            invocationCtx.setCalleeIp(Optional.of(req.getParameter("calleeIp")));
+            invocationCtx.calleeIp(req.getParameter("calleeIp"));
         }
 
         if (parameters.contains("calleePort")) {
-            invocationCtx.setCalleePort(Optional.of(Integer.valueOf(req.getParameter("calleePort"))));
+            invocationCtx.calleePort(Integer.valueOf(req.getParameter("calleePort")));
         }
 
-        if (parameters.contains("callerIp")) {
-            invocationCtx.setCallerIp(Optional.of(req.getParameter("callerIp")));
+        if (parameters.contains("callerMid")) {
+            invocationCtx.callerMid(req.getParameter("callerMid"));
         }
 
-        if (parameters.contains("callerFrom")) {
-            invocationCtx.setCallerFrom(Optional.of(req.getParameter("callerFrom")));
-        }
-
-        if (parameters.contains("customerName")) {
-            invocationCtx.setCustomerName(Optional.of(req.getParameter("customerName")));
-        }
-
-        if (parameters.contains("customerId")) {
-            invocationCtx.setCustomerId(Optional.of(Integer.valueOf(req.getParameter("customerId"))));
+        if (parameters.contains("userId")) {
+            invocationCtx.userId(Long.valueOf(req.getParameter("userId")));
         }
 
         if (parameters.contains("operatorId")) {
-            invocationCtx.setOperatorId(Optional.of(Integer.valueOf(req.getParameter("operatorId"))));
+            invocationCtx.operatorId(Long.valueOf(req.getParameter("operatorId")));
         }
     }
 }
