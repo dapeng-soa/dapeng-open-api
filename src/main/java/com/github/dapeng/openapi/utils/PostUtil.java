@@ -34,11 +34,11 @@ public class PostUtil {
         invocationCtx.callerMid(req.getRequestURI());
         if (!invocationCtx.timeout().isPresent()) {
             //设置请求超时时间,从环境变量获取，默认 10s ,即 10000
-            Long timeOut = Long.valueOf(getEnvTimeOut());
+            Integer timeOut = Integer.valueOf(getEnvTimeOut());
             invocationCtx.timeout(timeOut);
         }
 
-        invocationCtx.setCodecProtocol(CodecProtocol.CompressedBinary);
+        invocationCtx.codecProtocol(CodecProtocol.CompressedBinary);
 
         Service bizService = ServiceCache.getService(service, version);
 
