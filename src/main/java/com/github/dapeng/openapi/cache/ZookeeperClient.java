@@ -80,7 +80,6 @@ public class ZookeeperClient {
      * @author maple.lei
      */
     public void getServersList() {
-        //ServiceCache.resetCache();
         caches.clear();
 
         try {

@@ -3,7 +3,7 @@ package com.github.dapeng.openapi.cache;
 
 import com.github.dapeng.core.SoaException;
 import com.github.dapeng.core.metadata.*;
-import com.github.dapeng.metadata.*;
+import com.github.dapeng.metadata.MetadataClient;
 import com.github.dapeng.registry.ServiceInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,7 +96,8 @@ public class ServiceCache {
                 String serviceValue = (String) map.get(it.next());
                 if (serviceValue.contains(serviceName)) {
                     it.remove();
-                    LOGGER.info("移除不可用实例信息 struct {}", serviceValue.toString());
+                    if (LOGGER.isDebugEnabled())
+                        LOGGER.debug("移除不可用实例信息 struct {}", serviceValue.toString());
                 }
             }
 

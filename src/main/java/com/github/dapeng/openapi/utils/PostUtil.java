@@ -3,7 +3,9 @@ package com.github.dapeng.openapi.utils;
 import com.github.dapeng.client.netty.JsonPost;
 import com.github.dapeng.core.InvocationContext;
 import com.github.dapeng.core.InvocationContextImpl;
+import com.github.dapeng.core.SoaCode;
 import com.github.dapeng.core.SoaException;
+import com.github.dapeng.core.enums.CodecProtocol;
 import com.github.dapeng.core.metadata.Service;
 import com.github.dapeng.openapi.cache.ServiceCache;
 import org.slf4j.Logger;
@@ -18,6 +20,7 @@ import java.util.Set;
  */
 public class PostUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(PostUtil.class);
+    private static final String OPEN_API_TIMEOUT = "soa.service.timeout";
 
     public static String post(String service,
                               String version,
@@ -29,11 +32,20 @@ public class PostUtil {
         invocationCtx.versionName(version);
         invocationCtx.methodName(method);
         invocationCtx.callerMid(req.getRequestURI());
-        //设置请求超时时间 10 s
-        invocationCtx.timeout(120000);
-        LOGGER.info("<=========>   timeout:" + invocationCtx.timeout());
+        if (!invocationCtx.timeout().isPresent()) {
+            //设置请求超时时间,从环境变量获取，默认 10s ,即 10000
+            Long timeOut = Long.valueOf(getEnvTimeOut());
+            invocationCtx.timeout(timeOut);
+        }
+
+        invocationCtx.setCodecProtocol(CodecProtocol.CompressedBinary);
 
         Service bizService = ServiceCache.getService(service, version);
+
+        if (bizService == null) {
+            LOGGER.error("bizService not found[service:" + service + ", version:" + version + "]");
+            return String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", SoaCode.NotMatchedService.getCode(), SoaCode.NotMatchedService.getMsg(), "{}");
+        }
 
         fillInvocationCtx(invocationCtx, req);
 
@@ -76,5 +88,17 @@ public class PostUtil {
         if (parameters.contains("operatorId")) {
             invocationCtx.operatorId(Long.valueOf(req.getParameter("operatorId")));
         }
+    }
+
+
+    private static String getEnvTimeOut() {
+        String timeOut = System.getenv(OPEN_API_TIMEOUT.replaceAll("\\.", "_"));
+        if (timeOut == null) {
+            timeOut = System.getProperty(OPEN_API_TIMEOUT);
+        }
+        if (timeOut == null) {
+            timeOut = "10000";
+        }
+        return timeOut;
     }
 }
