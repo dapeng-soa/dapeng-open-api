@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import static org.apache.zookeeper.ZooKeeper.States.CONNECTED;
 
@@ -29,7 +30,7 @@ public class ZookeeperClient {
 
     private final static Map<String, List<ServiceInfo>> caches = new ConcurrentHashMap<>();
 
-    ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    private ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     private String zookeeperHost;
 
@@ -45,12 +46,13 @@ public class ZookeeperClient {
         getServersList();
     }
 
-    public synchronized void reset() {
+
+    private synchronized void reset() {
         connect();
     }
 
 
-    public synchronized void destroy() {
+    private synchronized void destroy() {
         try {
             if (zk != null) {
                 zk.close();
@@ -79,10 +81,8 @@ public class ZookeeperClient {
      * @return
      * @author maple.lei
      */
-    public void getServersList() {
-        //ServiceCache.resetCache();
+    private void getServersList() {
         caches.clear();
-
         try {
             List<String> children = zk.getChildren(serviceRoute, watchedEvent -> {
                 //Children发生变化，则重新获取最新的services列表
@@ -190,5 +190,38 @@ public class ZookeeperClient {
         }
     }
 
+    // ------------------------ ---- --- --- --- --- --- --- --- --- --- --- --- --
 
+    /**
+     * 针对指定的从服务过滤，只获取指定的服务元信息
+     */
+    public synchronized void filterInit(List<String> paths) {
+        connect();
+        LOGGER.info("wait for lock");
+        filterServersList(paths);
+    }
+
+    /**
+     * 只获取指定的元数据信息
+     *
+     * @param childrenPath
+     */
+    private void filterServersList(List<String> childrenPath) {
+        caches.clear();
+        try {
+            List<String> children = zk.getChildren(serviceRoute, watchedEvent -> {
+                //Children发生变化，则重新获取最新的services列表
+                if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                    LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
+                    filterServersList(childrenPath);
+                }
+            });
+
+            List<String> result = children.stream().filter(path -> childrenPath.contains(path)).collect(Collectors.toList());
+
+            result.forEach(serviceName -> getServiceInfoByServiceName(serviceName));
+        } catch (KeeperException | InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+    }
 }
