@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -195,7 +196,7 @@ public class ZookeeperClient {
     /**
      * 针对指定的从服务过滤，只获取指定的服务元信息
      */
-    public synchronized void filterInit(List<String> paths) {
+    public synchronized void filterInit(Set<String> paths) {
         connect();
         LOGGER.info("wait for lock");
         filterServersList(paths);
@@ -206,7 +207,7 @@ public class ZookeeperClient {
      *
      * @param childrenPath
      */
-    private void filterServersList(List<String> childrenPath) {
+    private void filterServersList(Set<String> childrenPath) {
         caches.clear();
         try {
             List<String> children = zk.getChildren(serviceRoute, watchedEvent -> {
