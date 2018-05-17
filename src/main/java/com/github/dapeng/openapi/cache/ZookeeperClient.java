@@ -219,8 +219,44 @@ public class ZookeeperClient {
             });
 
             List<String> result = children.stream().filter(path -> childrenPath.contains(path)).collect(Collectors.toList());
+            LOGGER.info("[filter service]:过滤元数据信息结果:" + result.toString());
+            result.forEach(serviceName -> getServiceByNameSync(serviceName));
+        } catch (KeeperException | InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+    }
 
-            result.forEach(serviceName -> getServiceInfoByServiceName(serviceName));
+    /**
+     * 同步解析 元数据信息,针对 kafka-agent 代理部分
+     *
+     * @param serviceName
+     */
+    private void getServiceByNameSync(String serviceName) {
+        String servicePath = serviceRoute + "/" + serviceName;
+        try {
+            if (zk == null) {
+                init();
+            }
+            List<String> children = zk.getChildren(servicePath, watchedEvent -> {
+                if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                    LOGGER.info("{}子节点发生变化，重新获取信息", watchedEvent.getPath());
+                    getServiceInfoByServiceName(serviceName);
+//                    getServersList();
+                }
+            });
+
+            if (children.size() == 0) {
+                //移除这个没有运行服务的相关信息...
+                ServiceCache.removeServiceCache(servicePath);
+                LOGGER.info("{} 节点下面没有serviceInfo 信息，当前服务没有运行实例...", servicePath);
+            } else {
+                LOGGER.info("获取{}的子节点成功", servicePath);
+                WatcherUtils.resetServiceInfoByName(serviceName, servicePath, children, caches);
+
+                LOGGER.info("拿到服务 {} 地址，开始解析服务元信息", servicePath);
+                ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName));
+
+            }
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
