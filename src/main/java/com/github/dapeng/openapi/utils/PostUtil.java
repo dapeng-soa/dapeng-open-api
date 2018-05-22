@@ -71,7 +71,7 @@ public class PostUtil {
     private static void fillInvocationCtx(InvocationContext invocationCtx, HttpServletRequest req) {
         Set<String> parameters = req.getParameterMap().keySet();
         if (parameters.contains("calleeIp")) {
-            invocationCtx.calleeIp(IPUtils.transferIp(req.getParameter("calleeIp")));
+            invocationCtx.calleeIp(req.getParameter("calleeIp"));
         }
 
         if (parameters.contains("calleePort")) {
