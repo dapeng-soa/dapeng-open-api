@@ -6,6 +6,7 @@ import com.github.dapeng.core.InvocationContextImpl;
 import com.github.dapeng.core.SoaCode;
 import com.github.dapeng.core.SoaException;
 import com.github.dapeng.core.enums.CodecProtocol;
+import com.github.dapeng.core.helper.IPUtils;
 import com.github.dapeng.core.metadata.Service;
 import com.github.dapeng.openapi.cache.ServiceCache;
 import org.slf4j.Logger;
@@ -70,7 +71,7 @@ public class PostUtil {
     private static void fillInvocationCtx(InvocationContext invocationCtx, HttpServletRequest req) {
         Set<String> parameters = req.getParameterMap().keySet();
         if (parameters.contains("calleeIp")) {
-            invocationCtx.calleeIp(req.getParameter("calleeIp"));
+            invocationCtx.calleeIp(IPUtils.transferIp(req.getParameter("calleeIp")));
         }
 
         if (parameters.contains("calleePort")) {
