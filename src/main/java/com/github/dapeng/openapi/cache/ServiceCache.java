@@ -110,7 +110,7 @@ public class ServiceCache {
 
     public static void loadServicesMetadata(String serviceName, List<ServiceInfo> infos) {
         LOGGER.info("access loadServicesMetadata");
-        Map<String, ServiceInfo> diffVersionServices = new HashMap<>();
+        Map<String, ServiceInfo> diffVersionServices = new HashMap<>(64);
         for (ServiceInfo info : infos) {
             diffVersionServices.put(info.versionName, info);
         }
