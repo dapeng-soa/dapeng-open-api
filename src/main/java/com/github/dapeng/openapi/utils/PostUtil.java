@@ -6,6 +6,7 @@ import com.github.dapeng.core.InvocationContextImpl;
 import com.github.dapeng.core.SoaCode;
 import com.github.dapeng.core.SoaException;
 import com.github.dapeng.core.enums.CodecProtocol;
+import com.github.dapeng.core.helper.DapengUtil;
 import com.github.dapeng.core.helper.IPUtils;
 import com.github.dapeng.core.metadata.Service;
 import com.github.dapeng.openapi.cache.ServiceCache;
@@ -33,6 +34,9 @@ public class PostUtil {
         invocationCtx.versionName(version);
         invocationCtx.methodName(method);
         invocationCtx.callerMid(req.getRequestURI());
+        if (!invocationCtx.sessionTid().isPresent()) {
+            invocationCtx.sessionTid(DapengUtil.generateTid());
+        }
         if (!invocationCtx.timeout().isPresent()) {
             //设置请求超时时间,从环境变量获取，默认 10s ,即 10000
             Integer timeOut = Integer.valueOf(getEnvTimeOut());
