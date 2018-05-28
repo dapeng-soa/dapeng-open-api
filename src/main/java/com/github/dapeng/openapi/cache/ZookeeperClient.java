@@ -2,15 +2,12 @@ package com.github.dapeng.openapi.cache;
 
 import com.github.dapeng.registry.ServiceInfo;
 import com.github.dapeng.registry.zookeeper.WatcherUtils;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -42,14 +39,14 @@ public class ZookeeperClient {
     private ZooKeeper zk;
 
     public synchronized void init() {
-        connect();
+        connect(null, null);
         LOGGER.info("wait for lock");
         getServersList();
     }
 
 
     private synchronized void reset() {
-        connect();
+        connect(null, null);
     }
 
 
@@ -71,8 +68,15 @@ public class ZookeeperClient {
         return caches;
     }
 
+    public static Set<String> getWhitelist() {
+        return whitelist;
+    }
 
-    private final static String serviceRoute = "/soa/runtime/services";
+
+    private final static String SERVICE_ROUTE_PATH = "/soa/runtime/services";
+    private final String SERVICE_WITHELIST_PATH = "/soa/whitelist/services";
+    private static Set<String> whitelist = Collections.synchronizedSet(new HashSet<>());
+
 
     /**
      * 获取zookeeper中的services节点的子节点，并设置监听器
@@ -82,10 +86,10 @@ public class ZookeeperClient {
      * @return
      * @author maple.lei
      */
-    public void getServersList() {
+    private void getServersList() {
         caches.clear();
         try {
-            List<String> children = zk.getChildren(serviceRoute, watchedEvent -> {
+            List<String> children = zk.getChildren(SERVICE_ROUTE_PATH, watchedEvent -> {
                 //Children发生变化，则重新获取最新的services列表
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
@@ -107,7 +111,7 @@ public class ZookeeperClient {
      */
     private void getServiceInfoByServiceName(String serviceName) {
 
-        String servicePath = serviceRoute + "/" + serviceName;
+        String servicePath = SERVICE_ROUTE_PATH + "/" + serviceName;
         try {
 
             if (zk == null) {
@@ -147,7 +151,7 @@ public class ZookeeperClient {
      * <p>
      * 需要加锁
      */
-    private synchronized void connect() {
+    private synchronized void connect(String caseParams, Object o) {
         try {
             if (zk != null && zk.getState() == CONNECTED) {
                 return;
@@ -167,6 +171,14 @@ public class ZookeeperClient {
                     case SyncConnected:
                         semaphore.countDown();
                         LOGGER.info("Zookeeper Watcher 已连接 zookeeper Server,Zookeeper host: {}", zookeeperHost);
+                        if (null != caseParams)
+                            switch (caseParams) {
+                                case SERVICE_WITHELIST_PATH:
+                                    if (null != o) this.registerServiceWhiteList((Set<String>) o);
+                                    break;
+                                default:
+                                    break;
+                            }
                         break;
 
                     case Disconnected:
@@ -197,7 +209,7 @@ public class ZookeeperClient {
      * 针对指定的从服务过滤，只获取指定的服务元信息
      */
     public synchronized void filterInit(Set<String> paths) {
-        connect();
+        connect(null, null);
         LOGGER.info("wait for lock");
         filterServersList(paths);
     }
@@ -210,7 +222,7 @@ public class ZookeeperClient {
     private void filterServersList(Set<String> childrenPath) {
         caches.clear();
         try {
-            List<String> children = zk.getChildren(serviceRoute, watchedEvent -> {
+            List<String> children = zk.getChildren(SERVICE_ROUTE_PATH, watchedEvent -> {
                 //Children发生变化，则重新获取最新的services列表
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
@@ -232,7 +244,7 @@ public class ZookeeperClient {
      * @param serviceName
      */
     private void getServiceByNameSync(String serviceName) {
-        String servicePath = serviceRoute + "/" + serviceName;
+        String servicePath = SERVICE_ROUTE_PATH + "/" + serviceName;
         try {
             if (zk == null) {
                 init();
@@ -261,4 +273,145 @@ public class ZookeeperClient {
             LOGGER.error(e.getMessage(), e);
         }
     }
+
+    //=======针对服务白名单=======================================//
+
+    /**
+     * 注册白名单列表,并获取指定的服务元数据
+     *
+     * @param services 用于过滤的服务列表
+     */
+    public synchronized void filterInitWhiteList(Set<String> services) {
+        connect(SERVICE_WITHELIST_PATH, services);
+        LOGGER.info("wait for lock");
+        filterServersList(services);
+    }
+
+    /**
+     * 注册服务白名单到zookeeper
+     *
+     * @param services
+     */
+    private synchronized void registerServiceWhiteList(Set<String> services) {
+        if (null != services) {
+            services.forEach(s -> {
+                create(SERVICE_WITHELIST_PATH + "/" + s, false);
+            });
+            whitelist.addAll(services);
+            watchInstanceChange();
+        }
+    }
+
+    /**
+     * @param path
+     * @param ephemeral
+     */
+    private void create(String path, boolean ephemeral) {
+
+        int i = path.lastIndexOf("/");
+        if (i > 0) {
+            String parentPath = path.substring(0, i);
+            //判断父节点是否存在...
+            if (!checkExists(parentPath)) {
+                create(parentPath, false);
+            }
+        }
+        if (ephemeral) {
+            // 创建临时节点
+        } else {
+            createPersistent(path, "");
+        }
+    }
+
+    /**
+     * 异步添加持久化的节点
+     *
+     * @param path
+     * @param data
+     */
+    private void createPersistent(String path, String data) {
+        Stat stat = exists(path);
+
+        if (stat == null) {
+            zk.create(path, data.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT, persistNodeCreateCallback, data);
+        }
+    }
+
+    private Stat exists(String path) {
+        Stat stat = null;
+        try {
+            stat = zk.exists(path, false);
+        } catch (KeeperException | InterruptedException e) {
+        }
+        return stat;
+    }
+
+    /**
+     * 检查节点是否存在
+     */
+    private boolean checkExists(String path) {
+        try {
+            Stat exists = zk.exists(path, false);
+            if (exists != null) {
+                return true;
+            }
+            return false;
+        } catch (Throwable t) {
+        }
+        return false;
+    }
+
+    /**
+     * 异步添加持久化节点回调方法
+     */
+    private AsyncCallback.StringCallback persistNodeCreateCallback = (rc, path, ctx, name) -> {
+        switch (KeeperException.Code.get(rc)) {
+            case CONNECTIONLOSS:
+                LOGGER.info("创建节点:{},连接断开，重新创建", path);
+                createPersistent(path, (String) ctx);
+                break;
+            case OK:
+                LOGGER.info("创建节点:{},成功", path);
+                // 添加watcher
+                if (path.equals(SERVICE_WITHELIST_PATH)) {
+                    watchInstanceChange();
+                }
+                break;
+            case NODEEXISTS:
+                LOGGER.info("创建节点:{},已存在", path);
+                break;
+            default:
+                LOGGER.info("创建节点:{},失败", path);
+        }
+    };
+
+
+    /**
+     * watch 白名单节点变化
+     */
+    private void watchInstanceChange() {
+
+        try {
+            List<String> children = zk.getChildren(SERVICE_WITHELIST_PATH, event -> {
+                //Children发生变化，则重新获取最新的services列表
+                if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                    LOGGER.info("[{}] 服务白名单发生变化，重新获取...", event.getPath());
+                    whitelist.clear();
+                    watchInstanceChange();
+                }
+            });
+            whitelist.addAll(children);
+            filterServersList(whitelist);
+            LOGGER.info("当前白名单个数:[{}]", whitelist.size());
+            LOGGER.info(">>>>>>>>>>>>>>>>>>");
+            whitelist.forEach(w -> {
+                LOGGER.info(w);
+            });
+            LOGGER.info(">>>>>>>>>>>>>>>>>>");
+        } catch (Exception e) {
+            LOGGER.error("获取服务白名单失败");
+        }
+
+    }
+
 }

@@ -3,7 +3,6 @@ package com.github.dapeng.openapi.cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,6 +31,17 @@ public class ZkBootstrap {
         String zkHost = prepareEnv();
         zookeeperWatcher = new ZookeeperClient(zkHost);
         zookeeperWatcher.filterInit(paths);
+    }
+
+    /**
+     * 过滤元数据并加载白名单
+     *
+     * @param services
+     */
+    public void filterInitWhiteList(Set<String> services) {
+        String zkHost = prepareEnv();
+        zookeeperWatcher = new ZookeeperClient(zkHost);
+        zookeeperWatcher.filterInitWhiteList(services);
     }
 
 
