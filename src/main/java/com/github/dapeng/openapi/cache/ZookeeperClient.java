@@ -1,5 +1,6 @@
 package com.github.dapeng.openapi.cache;
 
+import com.github.dapeng.openapi.utils.Constants;
 import com.github.dapeng.registry.ServiceInfo;
 import com.github.dapeng.registry.zookeeper.WatcherUtils;
 import org.apache.zookeeper.*;
@@ -32,11 +33,15 @@ public class ZookeeperClient {
 
     private String zookeeperHost;
 
-    public ZookeeperClient(String zookeeperHost) {
+    private ZooKeeper zk;
+
+    private static ZookeeperClient zookeeperClient;
+
+    private static Set<String> whitelist = Collections.synchronizedSet(new HashSet<>());
+
+    private ZookeeperClient(String zookeeperHost) {
         this.zookeeperHost = zookeeperHost;
     }
-
-    private ZooKeeper zk;
 
     public synchronized void init() {
         connect(null, null);
@@ -44,6 +49,12 @@ public class ZookeeperClient {
         getServersList();
     }
 
+    public static ZookeeperClient getCurrInstance(String zookeeperHost) {
+        if (null == zookeeperClient) {
+            zookeeperClient = new ZookeeperClient(zookeeperHost);
+        }
+        return zookeeperClient;
+    }
 
     private synchronized void reset() {
         connect(null, null);
@@ -73,11 +84,6 @@ public class ZookeeperClient {
     }
 
 
-    private final static String SERVICE_ROUTE_PATH = "/soa/runtime/services";
-    private final String SERVICE_WITHELIST_PATH = "/soa/whitelist/services";
-    private static Set<String> whitelist = Collections.synchronizedSet(new HashSet<>());
-
-
     /**
      * 获取zookeeper中的services节点的子节点，并设置监听器
      * <p>
@@ -89,7 +95,7 @@ public class ZookeeperClient {
     private void getServersList() {
         caches.clear();
         try {
-            List<String> children = zk.getChildren(SERVICE_ROUTE_PATH, watchedEvent -> {
+            List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, watchedEvent -> {
                 //Children发生变化，则重新获取最新的services列表
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
@@ -111,7 +117,7 @@ public class ZookeeperClient {
      */
     private void getServiceInfoByServiceName(String serviceName) {
 
-        String servicePath = SERVICE_ROUTE_PATH + "/" + serviceName;
+        String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
         try {
 
             if (zk == null) {
@@ -173,7 +179,7 @@ public class ZookeeperClient {
                         LOGGER.info("Zookeeper Watcher 已连接 zookeeper Server,Zookeeper host: {}", zookeeperHost);
                         if (null != caseParams)
                             switch (caseParams) {
-                                case SERVICE_WITHELIST_PATH:
+                                case Constants.SERVICE_WITHELIST_PATH:
                                     if (null != o) this.registerServiceWhiteList((Set<String>) o);
                                     break;
                                 default:
@@ -222,7 +228,7 @@ public class ZookeeperClient {
     private void filterServersList(Set<String> childrenPath) {
         caches.clear();
         try {
-            List<String> children = zk.getChildren(SERVICE_ROUTE_PATH, watchedEvent -> {
+            List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, watchedEvent -> {
                 //Children发生变化，则重新获取最新的services列表
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
@@ -244,7 +250,7 @@ public class ZookeeperClient {
      * @param serviceName
      */
     private void getServiceByNameSync(String serviceName) {
-        String servicePath = SERVICE_ROUTE_PATH + "/" + serviceName;
+        String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
         try {
             if (zk == null) {
                 init();
@@ -282,7 +288,7 @@ public class ZookeeperClient {
      * @param services 用于过滤的服务列表
      */
     public synchronized void filterInitWhiteList(Set<String> services) {
-        connect(SERVICE_WITHELIST_PATH, services);
+        connect(Constants.SERVICE_WITHELIST_PATH, services);
         LOGGER.info("wait for lock");
         filterServersList(services);
     }
@@ -295,7 +301,7 @@ public class ZookeeperClient {
     private synchronized void registerServiceWhiteList(Set<String> services) {
         if (null != services) {
             services.forEach(s -> {
-                create(SERVICE_WITHELIST_PATH + "/" + s, false);
+                create(Constants.SERVICE_WITHELIST_PATH + "/" + s, false);
             });
             whitelist.addAll(services);
             watchInstanceChange();
@@ -373,7 +379,7 @@ public class ZookeeperClient {
             case OK:
                 LOGGER.info("创建节点:{},成功", path);
                 // 添加watcher
-                if (path.equals(SERVICE_WITHELIST_PATH)) {
+                if (path.equals(Constants.SERVICE_WITHELIST_PATH)) {
                     watchInstanceChange();
                 }
                 break;
@@ -392,7 +398,7 @@ public class ZookeeperClient {
     private void watchInstanceChange() {
 
         try {
-            List<String> children = zk.getChildren(SERVICE_WITHELIST_PATH, event -> {
+            List<String> children = zk.getChildren(Constants.SERVICE_WITHELIST_PATH, event -> {
                 //Children发生变化，则重新获取最新的services列表
                 if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("[{}] 服务白名单发生变化，重新获取...", event.getPath());
@@ -412,6 +418,19 @@ public class ZookeeperClient {
             LOGGER.error("获取服务白名单失败");
         }
 
+    }
+
+    //==============================================添加节点data
+
+    public synchronized void createData(String path, String data) {
+        if (zk == null) {
+            connect(null, null);
+        }
+        create(path, false);
+        if (checkExists(path)) {
+            LOGGER.info(" start to set data from: " + path);
+            zk.setData(path, data.getBytes(), -1, null, data);
+        }
     }
 
 }
