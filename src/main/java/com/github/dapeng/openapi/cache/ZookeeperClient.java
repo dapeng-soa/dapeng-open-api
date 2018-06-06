@@ -301,7 +301,7 @@ public class ZookeeperClient {
     private synchronized void registerServiceWhiteList(Set<String> services) {
         if (null != services) {
             services.forEach(s -> {
-                create(Constants.SERVICE_WITHELIST_PATH + "/" + s, false);
+                createNode(Constants.SERVICE_WITHELIST_PATH + "/" + s, false);
             });
             whitelist.addAll(services);
             watchInstanceChange();
@@ -312,14 +312,16 @@ public class ZookeeperClient {
      * @param path
      * @param ephemeral
      */
-    private void create(String path, boolean ephemeral) {
-
+    public synchronized void createNode(String path, boolean ephemeral) {
+        if (zk == null) {
+            connect(null, null);
+        }
         int i = path.lastIndexOf("/");
         if (i > 0) {
             String parentPath = path.substring(0, i);
             //判断父节点是否存在...
             if (!checkExists(parentPath)) {
-                create(parentPath, false);
+                createNode(parentPath, false);
             }
         }
         if (ephemeral) {
@@ -426,11 +428,24 @@ public class ZookeeperClient {
         if (zk == null) {
             connect(null, null);
         }
-        create(path, false);
+        createNode(path, false);
         if (checkExists(path)) {
             LOGGER.info(" start to set data from: " + path);
             zk.setData(path, data.getBytes(), -1, null, data);
         }
+    }
+
+    //==============================================无需watch获取zk节点数据
+    public synchronized Optional<List<String>> getNodeChildren(String path){
+        try {
+            if (zk == null) {
+                connect(null, null);
+            }
+           return Optional.of(zk.getChildren(path,false));
+        } catch (KeeperException | InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return Optional.empty();
     }
 
 }
