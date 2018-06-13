@@ -40,7 +40,7 @@ public class PostUtil {
         }
         if (!invocationCtx.timeout().isPresent()) {
             //设置请求超时时间,从环境变量获取
-            int timeOut = Integer.valueOf(getEnvTimeOut());
+            int timeOut = getEnvTimeOut();
             if (timeOut > 0) {
                 invocationCtx.timeout(timeOut);
             }
@@ -78,7 +78,7 @@ public class PostUtil {
     private static void fillInvocationCtx(InvocationContext invocationCtx, HttpServletRequest req) {
         Set<String> parameters = req.getParameterMap().keySet();
         if (parameters.contains("calleeIp")) {
-            invocationCtx.calleeIp(req.getParameter("calleeIp"));
+            invocationCtx.calleeIp(IPUtils.transferIp(req.getParameter("calleeIp")));
         }
 
         if (parameters.contains("calleePort")) {
@@ -99,9 +99,8 @@ public class PostUtil {
     }
 
 
-    private static String getEnvTimeOut() {
-        long timeOut = SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT;
+    private static int getEnvTimeOut() {
+        return SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT.intValue();
 
-        return String.valueOf(timeOut);
     }
 }
