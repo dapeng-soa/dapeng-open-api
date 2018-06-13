@@ -75,6 +75,18 @@ public class ZookeeperClient {
         LOGGER.info("关闭连接，清空service info caches");
     }
 
+    public synchronized void disconnect(){
+        try {
+            if (zk != null) {
+                zk.close();
+            }
+        } catch (InterruptedException e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+
+        LOGGER.info("关闭当前zk连接");
+    }
+
     public static Map<String, List<ServiceInfo>> getServices() {
         return caches;
     }
@@ -435,7 +447,21 @@ public class ZookeeperClient {
         }
     }
 
-    //==============================================无需watch获取zk节点数据
+    //==============================================无需watch获取节点data
+    public synchronized String getNodeData(String path) throws Exception {
+        if (zk == null) {
+            connect(null, null);
+        }
+        LOGGER.info(" get node data from: " + path);
+        byte[] data = zk.getData(path,false,null);
+        if (data.length>0){
+            return new String(data,"utf-8");
+        }else {
+            return "";
+        }
+    }
+
+    //==============================================无需watch获取zk节点数
     public synchronized Optional<List<String>> getNodeChildren(String path){
         try {
             if (zk == null) {
