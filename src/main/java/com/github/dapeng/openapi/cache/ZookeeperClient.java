@@ -344,6 +344,23 @@ public class ZookeeperClient {
     }
 
     /**
+     * 删除节点
+     * @param path
+     * @throws Exception
+     */
+    public synchronized void delNode(String path) throws Exception {
+        if (zk == null) {
+            connect(null, null);
+        }
+        if (checkExists(path)){
+            LOGGER.info("remove node is::"+path);
+            zk.delete(path,-1);
+        }else {
+            LOGGER.info("zk node ::"+path + "not found");
+        }
+    }
+
+    /**
      * 异步添加持久化的节点
      *
      * @param path
