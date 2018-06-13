@@ -8,6 +8,7 @@ import com.github.dapeng.core.SoaException;
 import com.github.dapeng.core.enums.CodecProtocol;
 import com.github.dapeng.core.helper.DapengUtil;
 import com.github.dapeng.core.helper.IPUtils;
+import com.github.dapeng.core.helper.SoaSystemEnvProperties;
 import com.github.dapeng.core.metadata.Service;
 import com.github.dapeng.openapi.cache.ServiceCache;
 import org.slf4j.Logger;
@@ -38,9 +39,11 @@ public class PostUtil {
             invocationCtx.sessionTid(DapengUtil.generateTid());
         }
         if (!invocationCtx.timeout().isPresent()) {
-            //设置请求超时时间,从环境变量获取，默认 10s ,即 10000
-            Integer timeOut = Integer.valueOf(getEnvTimeOut());
-            invocationCtx.timeout(timeOut);
+            //设置请求超时时间,从环境变量获取
+            int timeOut = Integer.valueOf(getEnvTimeOut());
+            if (timeOut > 0) {
+                invocationCtx.timeout(timeOut);
+            }
         }
 
         invocationCtx.codecProtocol(CodecProtocol.CompressedBinary);
@@ -97,13 +100,8 @@ public class PostUtil {
 
 
     private static String getEnvTimeOut() {
-        String timeOut = System.getenv(OPEN_API_TIMEOUT.replaceAll("\\.", "_"));
-        if (timeOut == null) {
-            timeOut = System.getProperty(OPEN_API_TIMEOUT);
-        }
-        if (timeOut == null) {
-            timeOut = "10000";
-        }
-        return timeOut;
+        long timeOut = SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT;
+
+        return String.valueOf(timeOut);
     }
 }
