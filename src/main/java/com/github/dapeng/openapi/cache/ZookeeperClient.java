@@ -75,7 +75,7 @@ public class ZookeeperClient {
         LOGGER.info("关闭连接，清空service info caches");
     }
 
-    public synchronized void disconnect(){
+    public synchronized void disconnect() {
         try {
             if (zk != null) {
                 zk.close();
@@ -345,6 +345,7 @@ public class ZookeeperClient {
 
     /**
      * 删除节点
+     *
      * @param path
      * @throws Exception
      */
@@ -352,11 +353,11 @@ public class ZookeeperClient {
         if (zk == null) {
             connect(null, null);
         }
-        if (checkExists(path)){
-            LOGGER.info("remove node is::"+path);
-            zk.delete(path,-1);
-        }else {
-            LOGGER.info("zk node ::"+path + "not found");
+        if (checkExists(path)) {
+            LOGGER.info("remove node is::" + path);
+            zk.delete(path, -1);
+        } else {
+            LOGGER.info("zk node ::" + path + "not found");
         }
     }
 
@@ -470,21 +471,26 @@ public class ZookeeperClient {
             connect(null, null);
         }
         LOGGER.info(" get node data from: " + path);
-        byte[] data = zk.getData(path,false,null);
-        if (data.length>0){
-            return new String(data,"utf-8");
-        }else {
-            return "";
+        if (checkExists(path)) {
+            byte[] data = zk.getData(path, false, null);
+            if (data.length > 0) {
+                return new String(data, "utf-8");
+            }
+        } else {
+            LOGGER.info("zk node ::" + path + "not found");
         }
+        return "";
     }
 
     //==============================================无需watch获取zk节点数
-    public synchronized Optional<List<String>> getNodeChildren(String path){
+    public synchronized Optional<List<String>> getNodeChildren(String path) {
         try {
             if (zk == null) {
                 connect(null, null);
             }
-           return Optional.of(zk.getChildren(path,false));
+            if (checkExists(path)) {
+                return Optional.of(zk.getChildren(path, false));
+            }
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
