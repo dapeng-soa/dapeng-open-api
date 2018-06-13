@@ -24,13 +24,24 @@ import java.util.concurrent.TimeUnit;
 public class ServiceCache {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceCache.class);
-
+    /**
+     * 以服务的SimpleName和version拼接作为key，保存服务元数据的map
+     * etc. AdminSkuPriceService:1.0.0 -> 元信息
+     */
     private static Map<String, Service> services = Collections.synchronizedMap(new TreeMap<>());
-
+    /**
+     * 以服务的全限定名和 version 拼接作为key，保存服务的实例信息
+     * etc. com.today.api.skuprice.service.AdminSkuPriceService:1.0.0  -> ServiceInfo 实例信息
+     */
     private static Map<String, ServiceInfo> serverInfoMap = Collections.synchronizedMap(new TreeMap<>());
-
+    /**
+     * 以服务的全限定名和version拼接作为key，保存服务元数据的map
+     * etc. AdminSkuPriceService:1.0.0 -> 元信息
+     */
     private static Map<String, Service> fullNameService = Collections.synchronizedMap(new TreeMap<>());
-
+    /**
+     * 只针对文档站点进行使用。url展示
+     */
     public static Map<String, String> urlMappings = new ConcurrentHashMap<>();
 
 
@@ -41,12 +52,14 @@ public class ServiceCache {
         serverInfoMap.clear();
     }
 
-    public static void removeServiceCache(String servicePath) {
+    public static void removeServiceCache(String servicePath, boolean needLoadUrl) {
         String serviceName = servicePath.substring(servicePath.lastIndexOf(".") + 1);
         removeByServiceKey(serviceName, services);
         removeByServiceKey(serviceName, fullNameService);
         removeByServiceKeyValue(serviceName, urlMappings);
-        removeByServiceKey(serviceName, serverInfoMap);
+        if (needLoadUrl) {
+            removeByServiceKey(serviceName, serverInfoMap);
+        }
     }
 
     /**
@@ -108,7 +121,7 @@ public class ServiceCache {
 
     }
 
-    public static void loadServicesMetadata(String serviceName, List<ServiceInfo> infos) {
+    public static void loadServicesMetadata(String serviceName, List<ServiceInfo> infos, boolean needLoadUrl) {
         LOGGER.info("access loadServicesMetadata");
         Map<String, ServiceInfo> diffVersionServices = new HashMap<>(64);
         for (ServiceInfo info : infos) {
@@ -131,7 +144,10 @@ public class ServiceCache {
                     if (metadata != null) {
                         try (StringReader reader = new StringReader(metadata)) {
                             Service serviceData = JAXB.unmarshal(reader, Service.class);
+                            //ServiceName + VersionName for Key
+                            //AdminSkuPriceService:1.0.0
                             String serviceKey = getKey(serviceData);
+                            //com.today.api.skuprice.service.AdminSkuPriceService:1.0.0
                             String fullNameKey = getFullNameKey(serviceData);
 
                             services.put(serviceKey, serviceData);
@@ -146,8 +162,9 @@ public class ServiceCache {
 
                             fullNameService.put(fullNameKey, serviceData);
 
-                            loadServiceUrl(serviceData);
-
+                            if (needLoadUrl) {
+                                loadServiceUrl(serviceData);
+                            }
                         } catch (Exception e) {
                             LOGGER.error("{}:{} metadata解析出错, {}", serviceName, version);
                             LOGGER.error(e.getMessage(), e);

@@ -43,10 +43,10 @@ public class ZookeeperClient {
         this.zookeeperHost = zookeeperHost;
     }
 
-    public synchronized void init() {
+    public synchronized void init(boolean needLoadUrl) {
         connect(null, null);
         LOGGER.info("wait for lock");
-        getServersList();
+        getServersList(needLoadUrl);
     }
 
     public static ZookeeperClient getCurrInstance(String zookeeperHost) {
@@ -104,18 +104,18 @@ public class ZookeeperClient {
      * @return
      * @author maple.lei
      */
-    private void getServersList() {
+    private void getServersList(boolean needLoadUrl) {
         caches.clear();
         try {
             List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, watchedEvent -> {
                 //Children发生变化，则重新获取最新的services列表
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
-                    getServersList();
+                    getServersList(needLoadUrl);
                 }
             });
 
-            children.forEach(serviceName -> getServiceInfoByServiceName(serviceName));
+            children.forEach(serviceName -> getServiceInfoByServiceName(serviceName, needLoadUrl));
 
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
@@ -127,26 +127,26 @@ public class ZookeeperClient {
      *
      * @param serviceName
      */
-    private void getServiceInfoByServiceName(String serviceName) {
+    private void getServiceInfoByServiceName(String serviceName, boolean needLoadUrl) {
 
         String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
         try {
 
             if (zk == null) {
-                init();
+                init(needLoadUrl);
             }
 
             List<String> children = zk.getChildren(servicePath, watchedEvent -> {
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取信息", watchedEvent.getPath());
-                    getServiceInfoByServiceName(serviceName);
+                    getServiceInfoByServiceName(serviceName, needLoadUrl);
 //                    getServersList();
                 }
             });
 
             if (children.size() == 0) {
                 //移除这个没有运行服务的相关信息...
-                ServiceCache.removeServiceCache(servicePath);
+                ServiceCache.removeServiceCache(servicePath,needLoadUrl);
                 LOGGER.info("{} 节点下面没有serviceInfo 信息，当前服务没有运行实例...", servicePath);
             } else {
                 LOGGER.info("获取{}的子节点成功", servicePath);
@@ -155,7 +155,7 @@ public class ZookeeperClient {
                 LOGGER.info("拿到服务 {} 地址，开始解析服务元信息,处理线程数量 {}", servicePath, Runtime.getRuntime().availableProcessors());
                 executorService.execute(() -> {
                     LOGGER.info("开启线程开始解析元数据信息");
-                    ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName));
+                    ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName), needLoadUrl);
                 });
 
             }
@@ -265,26 +265,26 @@ public class ZookeeperClient {
         String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
         try {
             if (zk == null) {
-                init();
+                init(false);
             }
             List<String> children = zk.getChildren(servicePath, watchedEvent -> {
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取信息", watchedEvent.getPath());
-                    getServiceInfoByServiceName(serviceName);
+                    getServiceInfoByServiceName(serviceName,false);
 //                    getServersList();
                 }
             });
 
             if (children.size() == 0) {
                 //移除这个没有运行服务的相关信息...
-                ServiceCache.removeServiceCache(servicePath);
+                ServiceCache.removeServiceCache(servicePath,false);
                 LOGGER.info("{} 节点下面没有serviceInfo 信息，当前服务没有运行实例...", servicePath);
             } else {
                 LOGGER.info("获取{}的子节点成功", servicePath);
                 WatcherUtils.resetServiceInfoByName(serviceName, servicePath, children, caches);
 
                 LOGGER.info("拿到服务 {} 地址，开始解析服务元信息", servicePath);
-                ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName));
+                ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName),false);
 
             }
         } catch (KeeperException | InterruptedException e) {

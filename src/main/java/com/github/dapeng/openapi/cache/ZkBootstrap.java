@@ -17,10 +17,20 @@ public class ZkBootstrap {
 
     private ZookeeperClient zookeeperWatcher;
 
+    /**
+     * open api 启动，加载 urlMapping
+     */
+    public void openApiInit() {
+        String zkHost = EnvUtil.prepareEnv();
+        zookeeperWatcher = ZookeeperClient.getCurrInstance(zkHost);
+        zookeeperWatcher.init(true);
+    }
+
+
     public void init() {
         String zkHost = EnvUtil.prepareEnv();
         zookeeperWatcher = ZookeeperClient.getCurrInstance(zkHost);
-        zookeeperWatcher.init();
+        zookeeperWatcher.init(false);
     }
 
     /**
