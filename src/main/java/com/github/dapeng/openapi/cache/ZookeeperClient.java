@@ -9,10 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static org.apache.zookeeper.ZooKeeper.States.CONNECTED;
@@ -29,7 +26,6 @@ public class ZookeeperClient {
 
     private final static Map<String, List<ServiceInfo>> caches = new ConcurrentHashMap<>();
 
-    private ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     private String zookeeperHost;
 
@@ -146,18 +142,23 @@ public class ZookeeperClient {
 
             if (children.size() == 0) {
                 //移除这个没有运行服务的相关信息...
-                ServiceCache.removeServiceCache(servicePath,needLoadUrl);
+                ServiceCache.removeServiceCache(servicePath, needLoadUrl);
                 LOGGER.info("{} 节点下面没有serviceInfo 信息，当前服务没有运行实例...", servicePath);
             } else {
                 LOGGER.info("获取{}的子节点成功", servicePath);
                 WatcherUtils.resetServiceInfoByName(serviceName, servicePath, children, caches);
-
+                //线程池并行操作
+                ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
                 LOGGER.info("拿到服务 {} 地址，开始解析服务元信息,处理线程数量 {}", servicePath, Runtime.getRuntime().availableProcessors());
+                long beginTime = System.currentTimeMillis();
                 executorService.execute(() -> {
                     LOGGER.info("开启线程开始解析元数据信息");
                     ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName), needLoadUrl);
                 });
-
+                executorService.shutdown();
+                executorService.awaitTermination(1, TimeUnit.HOURS);
+                //主线程继续
+                LOGGER.info("<<<<<<<<<< 子线程解析服务元数据结束,耗时:{} ms.  主线程继续执行 >>>>>>>>>>", (System.currentTimeMillis() - beginTime));
             }
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
@@ -270,21 +271,21 @@ public class ZookeeperClient {
             List<String> children = zk.getChildren(servicePath, watchedEvent -> {
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取信息", watchedEvent.getPath());
-                    getServiceInfoByServiceName(serviceName,false);
+                    getServiceInfoByServiceName(serviceName, false);
 //                    getServersList();
                 }
             });
 
             if (children.size() == 0) {
                 //移除这个没有运行服务的相关信息...
-                ServiceCache.removeServiceCache(servicePath,false);
+                ServiceCache.removeServiceCache(servicePath, false);
                 LOGGER.info("{} 节点下面没有serviceInfo 信息，当前服务没有运行实例...", servicePath);
             } else {
                 LOGGER.info("获取{}的子节点成功", servicePath);
                 WatcherUtils.resetServiceInfoByName(serviceName, servicePath, children, caches);
 
                 LOGGER.info("拿到服务 {} 地址，开始解析服务元信息", servicePath);
-                ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName),false);
+                ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName), false);
 
             }
         } catch (KeeperException | InterruptedException e) {
