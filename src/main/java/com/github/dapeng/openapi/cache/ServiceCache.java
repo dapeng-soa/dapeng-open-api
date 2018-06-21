@@ -130,12 +130,11 @@ public class ServiceCache {
 
         for (ServiceInfo info : diffVersionServices.values()) {
             String version = info.versionName;
-            String metadata = "";
+            String metadata;
             int tryCount = 1;
 
             while (tryCount <= 3) {
                 try {
-                    TimeUnit.SECONDS.sleep(2);
 
                     MetadataClient metadataClient = new MetadataClient(serviceName, version);
                     metadata = metadataClient.getServiceMetadata();
@@ -181,11 +180,16 @@ public class ServiceCache {
                     LOGGER.error(e.getMessage(), e);
                     LOGGER.error("metadata获取出错", e);
                     tryCount++;
-
                 } catch (Exception e) {
                     LOGGER.error("{}:{} 触发 Exception ,已尝试 {} 次", serviceName, version, tryCount);
                     LOGGER.error(e.getMessage(), e);
                     tryCount++;
+                }
+                //睡眠
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    LOGGER.error(e.getMessage(), e);
                 }
 
             }
