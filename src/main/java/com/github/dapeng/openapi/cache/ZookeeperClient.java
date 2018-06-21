@@ -251,7 +251,9 @@ public class ZookeeperClient {
 
             List<String> result = children.stream().filter(path -> childrenPath.contains(path)).collect(Collectors.toList());
             LOGGER.info("[filter service]:过滤元数据信息结果:" + result.toString());
+            long beginTime = System.currentTimeMillis();
             result.forEach(serviceName -> getServiceByNameSync(serviceName));
+            LOGGER.info("<<<<<<<<<<< 解析元数据结束,耗时:{} ms >>>>>>>>>> ", (System.currentTimeMillis() - beginTime));
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
