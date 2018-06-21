@@ -80,7 +80,7 @@ public class ServiceCache {
                 String serviceKey = it.next();
                 if (serviceKey.contains(serviceName)) {
                     it.remove();
-                    LOGGER.info("移除不可用实例信息key {}", serviceKey);
+                    LOGGER.debug("移除不可用实例信息key {}", serviceKey);
                 }
             }
 
