@@ -106,21 +106,19 @@ public class ServiceCache {
     public static <T> void removeByServiceKeyValue(String serviceName, Map<String, T> map) {
         try {
             if (map.size() == 0) {
-                throw new RuntimeException("map 为空，不需要进行移除");
+                throw new RuntimeException("urlMappings map 为空，不需要进行移除");
             }
-
-            LOGGER.info("移除不可用实例信息value {}，移除前，map size： {}", map.values(), map.size());
+            LOGGER.debug("<< begin >>>  根据serviceName:{} 移除不可用实例 移除前map size：{}", serviceName, map.size());
             Iterator<String> it = map.keySet().iterator();
             while (it.hasNext()) {
                 String serviceValue = (String) map.get(it.next());
                 if (serviceValue.contains(serviceName)) {
                     it.remove();
                     if (LOGGER.isDebugEnabled())
-                        LOGGER.debug("移除不可用实例信息 struct {}", serviceValue.toString());
+                        LOGGER.debug("移除不可用实例信息 struct {}", serviceValue);
                 }
             }
-
-            LOGGER.info("移除不可用实例信息，移除后，map size： {}", map.size());
+            LOGGER.debug("<< end >>>  根据serviceName:{} 移除不可用实例 移除后map size：{}", map.size());
         } catch (RuntimeException e) {
             LOGGER.info(e.getMessage(), "map size 为 0 ，不需要进行移除 ...");
         }
