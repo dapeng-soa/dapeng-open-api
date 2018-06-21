@@ -252,48 +252,14 @@ public class ZookeeperClient {
             List<String> result = children.stream().filter(path -> childrenPath.contains(path)).collect(Collectors.toList());
             LOGGER.info("[filter service]:过滤元数据信息结果:" + result.toString());
             long beginTime = System.currentTimeMillis();
-            result.forEach(serviceName -> getServiceByNameSync(serviceName));
+            result.forEach(serviceName -> getServiceInfoByServiceName(serviceName,false));
             LOGGER.info("<<<<<<<<<<< 解析元数据结束,耗时:{} ms >>>>>>>>>> ", (System.currentTimeMillis() - beginTime));
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
     }
 
-    /**
-     * 同步解析 元数据信息,针对 kafka-agent 代理部分
-     *
-     * @param serviceName
-     */
-    private void getServiceByNameSync(String serviceName) {
-        String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
-        try {
-            if (zk == null) {
-                init(false);
-            }
-            List<String> children = zk.getChildren(servicePath, watchedEvent -> {
-                if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-                    LOGGER.info("{}子节点发生变化，重新获取信息", watchedEvent.getPath());
-                    getServiceInfoByServiceName(serviceName, false);
-//                    getServersList();
-                }
-            });
 
-            if (children.size() == 0) {
-                //移除这个没有运行服务的相关信息...
-                ServiceCache.removeServiceCache(servicePath, false);
-                LOGGER.info("{} 节点下面没有serviceInfo 信息，当前服务没有运行实例...", servicePath);
-            } else {
-                LOGGER.info("获取{}的子节点成功", servicePath);
-                WatcherUtils.resetServiceInfoByName(serviceName, servicePath, children, caches);
-
-                LOGGER.info("拿到服务 {} 地址，开始解析服务元信息", servicePath);
-                ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName), false);
-
-            }
-        } catch (KeeperException | InterruptedException e) {
-            LOGGER.error(e.getMessage(), e);
-        }
-    }
 
     //=======针对服务白名单=======================================//
 
