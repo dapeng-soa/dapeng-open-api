@@ -95,7 +95,7 @@ public class ZookeeperClient {
     /**
      * 获取zookeeper中的services节点的子节点，并设置监听器
      * <p>
-     * 取消每次都重制所有服务信息，采用 增量 和 减量 形式
+     * 取消每次都重置所有服务信息，采用 增量 和 减量 形式
      *
      * @return
      * @author maple.lei
@@ -136,7 +136,6 @@ public class ZookeeperClient {
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取信息", watchedEvent.getPath());
                     getServiceInfoByServiceName(serviceName, needLoadUrl);
-//                    getServersList();
                 }
             });
 
@@ -252,13 +251,11 @@ public class ZookeeperClient {
             List<String> result = children.stream().filter(path -> childrenPath.contains(path)).collect(Collectors.toList());
             LOGGER.info("[filter service]:过滤元数据信息结果:" + result.toString());
             long beginTime = System.currentTimeMillis();
-            result.forEach(serviceName -> getServiceInfoByServiceName(serviceName,false));
-            LOGGER.info("<<<<<<<<<<< 解析元数据结束,耗时:{} ms >>>>>>>>>> ", (System.currentTimeMillis() - beginTime));
+            result.forEach(serviceName -> getServiceInfoByServiceName(serviceName, false));
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
     }
-
 
 
     //=======针对服务白名单=======================================//
@@ -421,8 +418,13 @@ public class ZookeeperClient {
 
     }
 
-    //==============================================添加节点data
 
+    /**
+     * 添加节点data
+     *
+     * @param path
+     * @param data
+     */
     public synchronized void createData(String path, String data) {
         if (zk == null) {
             connect(null, null);
@@ -434,7 +436,13 @@ public class ZookeeperClient {
         }
     }
 
-    //==============================================无需watch获取节点data
+    /**
+     * 无需watch获取节点data
+     *
+     * @param path
+     * @return
+     * @throws Exception
+     */
     public synchronized String getNodeData(String path) throws Exception {
         if (zk == null) {
             connect(null, null);
@@ -451,7 +459,12 @@ public class ZookeeperClient {
         return "";
     }
 
-    //==============================================无需watch获取zk节点数
+    /**
+     * 无需watch获取zk节点数
+     *
+     * @param path
+     * @return
+     */
     public synchronized Optional<List<String>> getNodeChildren(String path) {
         try {
             if (zk == null) {

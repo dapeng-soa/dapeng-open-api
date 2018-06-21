@@ -54,12 +54,17 @@ public class ServiceCache {
 
     public static void removeServiceCache(String servicePath, boolean needLoadUrl) {
         String serviceName = servicePath.substring(servicePath.lastIndexOf(".") + 1);
+        String fullServiceName = servicePath.substring(servicePath.lastIndexOf("/") + 1);
+
         removeByServiceKey(serviceName, services);
-        removeByServiceKey(serviceName, fullNameService);
-        removeByServiceKeyValue(serviceName, urlMappings);
+        removeByServiceKey(fullServiceName, fullNameService);
+
+        removeByServiceKey(fullServiceName, serverInfoMap);
+        //for openApi
         if (needLoadUrl) {
-            removeByServiceKey(serviceName, serverInfoMap);
+            removeByServiceKeyValue(serviceName, urlMappings);
         }
+
     }
 
     /**
@@ -74,17 +79,18 @@ public class ServiceCache {
                 throw new RuntimeException("map 为空，不需要进行移除");
             }
 
-            LOGGER.info("移除不可用实例信息value {}，移除前，map size： {}", map.values(), map.size());
+            LOGGER.debug("<< begin >>>  根据serviceName:{} 移除不可用实例 移除前map size：{}", serviceName, map.size());
             Iterator<String> it = map.keySet().iterator();
             while (it.hasNext()) {
                 String serviceKey = it.next();
-                if (serviceKey.contains(serviceName)) {
+                String ignoreVersionKey = serviceKey.substring(0, serviceKey.indexOf(":"));
+
+                if (ignoreVersionKey.equals(serviceName)) {
                     it.remove();
-                    LOGGER.debug("移除不可用实例信息key {}", serviceKey);
+                    LOGGER.info("根据 serviceName:{}, 移除不可用实例: key {}, service:{}", serviceName, serviceKey, ignoreVersionKey);
                 }
             }
-
-            LOGGER.info("移除不可用实例信息，移除后，map size： {}", map.size());
+            LOGGER.debug("<< end >>>  根据serviceName:{} 移除不可用实例 移除后map size：{}", map.size());
         } catch (RuntimeException e) {
             LOGGER.info(e.getMessage(), "map size 为 0 ，不需要进行移除 ...");
         }
