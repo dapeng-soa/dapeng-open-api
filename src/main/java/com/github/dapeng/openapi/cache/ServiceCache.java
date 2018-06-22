@@ -126,12 +126,13 @@ public class ServiceCache {
     }
 
     public static void loadServicesMetadata(String serviceName, List<ServiceInfo> infos, boolean needLoadUrl) {
-        LOGGER.info("access loadServicesMetadata");
+        LOGGER.info("access loadServicesMetadata, infos size:{}", infos.size());
         Map<String, ServiceInfo> diffVersionServices = new HashMap<>(64);
         for (ServiceInfo info : infos) {
             diffVersionServices.put(info.versionName, info);
+            LOGGER.info("loadServicesMetadata info: {}:{}, version:{}", info.host, info.port, info.versionName);
         }
-
+        LOGGER.info("diffVersionServices values size: {}", diffVersionServices.values().size());
         for (ServiceInfo info : diffVersionServices.values()) {
             String version = info.versionName;
             String metadata;
@@ -139,11 +140,10 @@ public class ServiceCache {
 
             while (tryCount <= 3) {
                 try {
-
+                    LOGGER.info("begin to fetch metadataClient ...");
                     MetadataClient metadataClient = new MetadataClient(serviceName, version);
                     metadata = metadataClient.getServiceMetadata();
-
-
+                    LOGGER.info("fetched the  metadataClient, metadata:{}", metadata.substring(0, 100));
                     if (metadata != null) {
                         try (StringReader reader = new StringReader(metadata)) {
                             Service serviceData = JAXB.unmarshal(reader, Service.class);
