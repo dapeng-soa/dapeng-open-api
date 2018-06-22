@@ -111,8 +111,22 @@ public class ZookeeperClient {
                 }
             });
 
-            children.forEach(serviceName -> getServiceInfoByServiceName(serviceName, needLoadUrl));
+            //线程池并行操作
+            int processor = Runtime.getRuntime().availableProcessors() >= 4 ? Runtime.getRuntime().availableProcessors() : 4;
+            ExecutorService executorService = Executors.newFixedThreadPool(processor);
+            LOGGER.info("获取所有runtime下面的节点信息，开始解析服务元信息,处理线程数量 {}", processor);
 
+            long beginTime = System.currentTimeMillis();
+            children.forEach(serviceName -> {
+                executorService.execute(() -> {
+                    LOGGER.info("子线程解析服务:{} 元数据信息", serviceName);
+                    getServiceInfoByServiceName(serviceName, needLoadUrl);
+                });
+            });
+            executorService.shutdown();
+            executorService.awaitTermination(1, TimeUnit.HOURS);
+            //主线程继续
+            LOGGER.info("<<<<<<<<<< 子线程解析服务元数据结束,耗时:{} ms.  主线程继续执行 >>>>>>>>>>", (System.currentTimeMillis() - beginTime));
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
@@ -124,10 +138,8 @@ public class ZookeeperClient {
      * @param serviceName
      */
     private void getServiceInfoByServiceName(String serviceName, boolean needLoadUrl) {
-
         String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
         try {
-
             if (zk == null) {
                 init(needLoadUrl);
             }
@@ -146,18 +158,8 @@ public class ZookeeperClient {
             } else {
                 LOGGER.info("获取{}的子节点成功", servicePath);
                 WatcherUtils.resetServiceInfoByName(serviceName, servicePath, children, caches);
-                //线程池并行操作
-                ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-                LOGGER.info("拿到服务 {} 地址，开始解析服务元信息,处理线程数量 {}", servicePath, Runtime.getRuntime().availableProcessors());
-                long beginTime = System.currentTimeMillis();
-                executorService.execute(() -> {
-                    LOGGER.info("开启线程开始解析元数据信息");
-                    ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName), needLoadUrl);
-                });
-                executorService.shutdown();
-                executorService.awaitTermination(1, TimeUnit.HOURS);
-                //主线程继续
-                LOGGER.info("<<<<<<<<<< 子线程解析服务元数据结束,耗时:{} ms.  主线程继续执行 >>>>>>>>>>", (System.currentTimeMillis() - beginTime));
+                ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName), needLoadUrl);
+                LOGGER.info("getServiceInfoByServiceName 解析服务 {} 元数据信息结束", serviceName);
             }
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
@@ -250,8 +252,23 @@ public class ZookeeperClient {
 
             List<String> result = children.stream().filter(path -> childrenPath.contains(path)).collect(Collectors.toList());
             LOGGER.info("[filter service]:过滤元数据信息结果:" + result.toString());
+
+            //线程池并行操作
+            int processor = Runtime.getRuntime().availableProcessors() >= 4 ? Runtime.getRuntime().availableProcessors() : 4;
+            ExecutorService executorService = Executors.newFixedThreadPool(processor);
+            LOGGER.info("获取所有runtime下面的节点信息，开始解析服务元信息,处理线程数量 {}", processor);
+
             long beginTime = System.currentTimeMillis();
-            result.forEach(serviceName -> getServiceInfoByServiceName(serviceName, false));
+            result.forEach(serviceName -> {
+                executorService.execute(() -> {
+                    LOGGER.info("子线程开始解析服务:{} 元数据信息", serviceName);
+                    getServiceInfoByServiceName(serviceName, false);
+                });
+            });
+            executorService.shutdown();
+            executorService.awaitTermination(1, TimeUnit.HOURS);
+            //主线程继续
+            LOGGER.info("<<<<<<<<<< 子线程解析服务元数据结束,耗时:{} ms.  主线程继续执行 >>>>>>>>>>", (System.currentTimeMillis() - beginTime));
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
