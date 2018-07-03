@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -78,7 +77,7 @@ public class PostUtil {
     private static void fillInvocationCtx(InvocationContext invocationCtx, HttpServletRequest req) {
         Set<String> parameters = req.getParameterMap().keySet();
         if (parameters.contains("calleeIp")) {
-            invocationCtx.calleeIp(req.getParameter("calleeIp"));
+            invocationCtx.calleeIp(IPUtils.transferIp(req.getParameter("calleeIp")));
         }
 
         if (parameters.contains("calleePort")) {
