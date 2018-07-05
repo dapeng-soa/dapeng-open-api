@@ -51,7 +51,7 @@ public class PostUtil {
 
         if (bizService == null) {
             LOGGER.error("bizService not found[service:" + service + ", version:" + version + "]");
-            return String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", SoaCode.NotMatchedService.getCode(), SoaCode.NotMatchedService.getMsg(), "{}");
+            return String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", SoaCode.NoMatchedService.getCode(), SoaCode.NoMatchedService.getMsg(), "{}");
         }
 
         fillInvocationCtx(invocationCtx, req);
