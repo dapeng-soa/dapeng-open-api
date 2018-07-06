@@ -25,13 +25,13 @@ public class ZookeeperClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperClient.class);
 
     private final static Map<String, List<ServiceInfo>> caches = new ConcurrentHashMap<>();
-
+    private final static Map<String, ZookeeperClient> zookeeperClientMap = new ConcurrentHashMap<>();
 
     private String zookeeperHost;
 
     private ZooKeeper zk;
 
-    private static ZookeeperClient zookeeperClient;
+    //private static ZookeeperClient zookeeperClient;
 
     private static Set<String> whitelist = Collections.synchronizedSet(new HashSet<>());
 
@@ -46,10 +46,12 @@ public class ZookeeperClient {
     }
 
     public static ZookeeperClient getCurrInstance(String zookeeperHost) {
-        if (null == zookeeperClient) {
-            zookeeperClient = new ZookeeperClient(zookeeperHost);
+        ZookeeperClient zkClient = zookeeperClientMap.get(zookeeperHost);
+        if (null == zkClient) {
+            zkClient = new ZookeeperClient(zookeeperHost);
+            zookeeperClientMap.put(zookeeperHost, zkClient);
         }
-        return zookeeperClient;
+        return zkClient;
     }
 
     private synchronized void reset() {
