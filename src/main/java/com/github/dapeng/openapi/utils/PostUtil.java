@@ -22,13 +22,31 @@ import java.util.Set;
  */
 public class PostUtil {
     private static final Logger LOGGER = LoggerFactory.getLogger(PostUtil.class);
-    private static final String OPEN_API_TIMEOUT = "soa.service.timeout";
 
     public static String post(String service,
                               String version,
                               String method,
                               String parameter,
                               HttpServletRequest req) {
+        return post(service, version, method, parameter, req, true);
+    }
+
+    /**
+     *
+     * @param service
+     * @param version
+     * @param method
+     * @param parameter
+     * @param req
+     * @param clearInvocationContext 是否清理InvocationContext. 如果不清理, 调用端负责清理
+     * @return
+     */
+    public static String post(String service,
+                              String version,
+                              String method,
+                              String parameter,
+                              HttpServletRequest req,
+                              boolean clearInvocationContext) {
         InvocationContextImpl invocationCtx = (InvocationContextImpl) InvocationContextImpl.Factory.currentInstance();
         invocationCtx.serviceName(service);
         invocationCtx.versionName(version);
@@ -70,7 +88,9 @@ public class PostUtil {
             LOGGER.error(e.getMessage(), e);
             return String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", "9999", "系统繁忙，请稍后再试[9999]！", "{}");
         } finally {
-            InvocationContextImpl.Factory.removeCurrentInstance();
+            if (clearInvocationContext) {
+                InvocationContextImpl.Factory.removeCurrentInstance();
+            }
         }
     }
 
