@@ -409,9 +409,11 @@ public class ZookeeperClient {
             filterServersList(whitelist);
             LOGGER.info("当前白名单个数:[{}]", whitelist.size());
             LOGGER.info(">>>>>>>>>>>>>>>>>>");
+            StringBuilder sb = new StringBuilder(256);
             whitelist.forEach(w -> {
-                LOGGER.info(w);
+                sb.append(w).append("\r");
             });
+            LOGGER.info(sb.toString());
             LOGGER.info(">>>>>>>>>>>>>>>>>>");
         } catch (Exception e) {
             LOGGER.error("获取服务白名单失败");
