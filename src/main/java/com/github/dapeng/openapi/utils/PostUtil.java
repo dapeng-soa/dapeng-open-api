@@ -69,7 +69,7 @@ public class PostUtil {
 
         if (bizService == null) {
             LOGGER.error("bizService not found[service:" + service + ", version:" + version + "]");
-            return String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", SoaCode.NotFoundServer.getCode(), SoaCode.NotFoundServer.getMsg(), "{}");
+            return String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", SoaCode.NoMatchedService.getCode(), SoaCode.NoMatchedService.getMsg(), "{}");
         }
 
         fillInvocationCtx(invocationCtx, req);
@@ -123,6 +123,5 @@ public class PostUtil {
 
     private static int getEnvTimeOut() {
         return SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT.intValue();
-
     }
 }

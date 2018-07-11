@@ -12,7 +12,6 @@ import javax.xml.bind.JAXB;
 import java.io.StringReader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Service Cache
@@ -143,6 +142,10 @@ public class ServiceCache {
                     LOGGER.info("begin to fetch metadataClient ...");
                     MetadataClient metadataClient = new MetadataClient(serviceName, version);
                     metadata = metadataClient.getServiceMetadata();
+
+                    //TODO 命令行 需要这样写 (请不要删除)
+                    //metadata = MetadataUtils.getRomoteServiceMetadata(info.host, info.port, serviceName, version);
+
                     LOGGER.info("fetched the  metadataClient, metadata:{}", metadata.substring(0, 100));
                     if (metadata != null) {
                         try (StringReader reader = new StringReader(metadata)) {
