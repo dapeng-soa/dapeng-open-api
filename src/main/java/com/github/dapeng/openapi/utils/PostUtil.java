@@ -73,8 +73,6 @@ public class PostUtil {
             return String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", SoaCode.NoMatchedService.getCode(), SoaCode.NoMatchedService.getMsg(), "{}");
         }
 
-        MDC.put(SoaSystemEnvProperties.KEY_LOGGER_SESSION_TID, invocationCtx.sessionTid().map(DapengUtil::longToHexStr).orElse("0"));
-
         fillInvocationCtx(invocationCtx, req);
 
         JsonPost jsonPost = new JsonPost(service, version, method, true);
@@ -93,7 +91,6 @@ public class PostUtil {
         } finally {
             if (clearInvocationContext) {
                 InvocationContextImpl.Factory.removeCurrentInstance();
-                MDC.put(SoaSystemEnvProperties.KEY_LOGGER_SESSION_TID, invocationCtx.sessionTid().map(DapengUtil::longToHexStr).orElse("0"));
             }
         }
     }
