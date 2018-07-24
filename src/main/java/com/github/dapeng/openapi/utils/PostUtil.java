@@ -13,6 +13,7 @@ import com.github.dapeng.core.metadata.Service;
 import com.github.dapeng.openapi.cache.ServiceCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Set;
@@ -115,6 +116,9 @@ public class PostUtil {
         if (parameters.contains("operatorId")) {
             invocationCtx.operatorId(Long.valueOf(req.getParameter("operatorId")));
         }
+
+        MDC.put(SoaSystemEnvProperties.KEY_LOGGER_SESSION_TID, invocationCtx.sessionTid().map(DapengUtil::longToHexStr).orElse("0"));
+
 
         InvocationContextImpl.InvocationContextProxy invocationCtxProxy = InvocationContextImpl.Factory.getInvocationContextProxy();
         invocationCtx.cookies(invocationCtxProxy.cookies());
