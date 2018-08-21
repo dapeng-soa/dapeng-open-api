@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * @author ever
@@ -31,8 +33,15 @@ public class PostUtil {
         return post(service, version, method, parameter, req, true);
     }
 
+    public static Future<String> postAsync(String service,
+                                   String version,
+                                   String method,
+                                   String parameter,
+                                   HttpServletRequest req) {
+        return postAsync(service, version, method, parameter, req, true);
+    }
+
     /**
-     *
      * @param service
      * @param version
      * @param method
@@ -41,29 +50,13 @@ public class PostUtil {
      * @param clearInvocationContext 是否清理InvocationContext. 如果不清理, 调用端负责清理
      * @return
      */
-    public static String post(String service,
-                              String version,
-                              String method,
-                              String parameter,
-                              HttpServletRequest req,
-                              boolean clearInvocationContext) {
-        InvocationContextImpl invocationCtx = (InvocationContextImpl) InvocationContextImpl.Factory.currentInstance();
-        invocationCtx.serviceName(service);
-        invocationCtx.versionName(version);
-        invocationCtx.methodName(method);
-        invocationCtx.callerMid(req.getRequestURI());
-        if (!invocationCtx.sessionTid().isPresent()) {
-            invocationCtx.sessionTid(DapengUtil.generateTid());
-        }
-        if (!invocationCtx.timeout().isPresent()) {
-            //设置请求超时时间,从环境变量获取
-            int timeOut = getEnvTimeOut();
-            if (timeOut > 0) {
-                invocationCtx.timeout(timeOut);
-            }
-        }
-
-        invocationCtx.codecProtocol(CodecProtocol.CompressedBinary);
+    private static String post(String service,
+                               String version,
+                               String method,
+                               String parameter,
+                               HttpServletRequest req,
+                               boolean clearInvocationContext) {
+        InvocationContextImpl invocationCtx = (InvocationContextImpl) createInvocationCtx(service, version, method, req);
 
         Service bizService = ServiceCache.getService(service, version);
 
@@ -92,6 +85,76 @@ public class PostUtil {
                 InvocationContextImpl.Factory.removeCurrentInstance();
             }
         }
+    }
+
+
+    /**
+     * @param service
+     * @param version
+     * @param method
+     * @param parameter
+     * @param req
+     * @param clearInvocationContext 是否清理InvocationContext. 如果不清理, 调用端负责清理
+     * @return
+     */
+    private static Future<String> postAsync(String service,
+                                            String version,
+                                            String method,
+                                            String parameter,
+                                            HttpServletRequest req,
+                                            boolean clearInvocationContext) {
+        InvocationContextImpl invocationCtx = (InvocationContextImpl) createInvocationCtx(service, version, method, req);
+
+        Service bizService = ServiceCache.getService(service, version);
+
+        if (bizService == null) {
+            LOGGER.error("bizService not found[service:" + service + ", version:" + version + "]");
+            return CompletableFuture.completedFuture(String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", SoaCode.NoMatchedService.getCode(), SoaCode.NoMatchedService.getMsg(), "{}"));
+        }
+        fillInvocationCtx(invocationCtx, req);
+
+        AsyncJsonPost jsonPost = new AsyncJsonPost(service, version, method, true);
+
+        try {
+            return jsonPost.callServiceMethodAsync(parameter, bizService);
+        } catch (SoaException e) {
+
+            LOGGER.error(e.getMsg(), e);
+            return CompletableFuture.completedFuture(String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", e.getCode(), e.getMsg(), "{}"));
+
+        } catch (Exception e) {
+
+            LOGGER.error(e.getMessage(), e);
+            return CompletableFuture.completedFuture(String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"%s\", \"status\":0}", "9999", "系统繁忙，请稍后再试[9999]！", "{}"));
+        } finally {
+            if (clearInvocationContext) {
+                InvocationContextImpl.Factory.removeCurrentInstance();
+            }
+        }
+    }
+
+
+    private static InvocationContext createInvocationCtx(String service,
+                                                         String version,
+                                                         String method,
+                                                         HttpServletRequest req) {
+        InvocationContextImpl invocationCtx = (InvocationContextImpl) InvocationContextImpl.Factory.currentInstance();
+        invocationCtx.serviceName(service);
+        invocationCtx.versionName(version);
+        invocationCtx.methodName(method);
+        invocationCtx.callerMid(req.getRequestURI());
+        if (!invocationCtx.sessionTid().isPresent()) {
+            invocationCtx.sessionTid(DapengUtil.generateTid());
+        }
+        if (!invocationCtx.timeout().isPresent()) {
+            //设置请求超时时间,从环境变量获取
+            int timeOut = getEnvTimeOut();
+            if (timeOut > 0) {
+                invocationCtx.timeout(timeOut);
+            }
+        }
+        invocationCtx.codecProtocol(CodecProtocol.CompressedBinary);
+        return invocationCtx;
     }
 
     private static void fillInvocationCtx(InvocationContext invocationCtx, HttpServletRequest req) {
@@ -124,4 +187,6 @@ public class PostUtil {
     private static int getEnvTimeOut() {
         return SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT.intValue();
     }
+
+
 }
