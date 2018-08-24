@@ -6,6 +6,7 @@ import com.github.dapeng.core.helper.SoaSystemEnvProperties;
 import com.github.dapeng.core.metadata.Method;
 import com.github.dapeng.core.metadata.Service;
 import com.github.dapeng.json.JsonSerializer;
+import com.github.dapeng.json.OptimizedMetadata;
 import com.github.dapeng.util.DumpUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,37 +52,39 @@ public class AsyncJsonPost {
      * 异步调用远程服务
      *
      * @param jsonParameter
-     * @param service
+     * @param optimizedService
      * @return
      * @throws Exception
      */
     public Future<String> callServiceMethodAsync(final String jsonParameter,
-                                                 final Service service) throws Exception {
-        List<Method> targetMethods = service.getMethods().stream().filter(element ->
-                element.name.equals(methodName))
-                .collect(Collectors.toList());
+                                                 final OptimizedMetadata.OptimizedService optimizedService) throws Exception {
+        Method method = optimizedService.getMethodMap().get(methodName);
 
-        if (targetMethods.isEmpty()) {
+        if (method == null) {
 
             String resp = String.format("{\"responseCode\":\"%s\", \"responseMsg\":\"%s\", \"success\":\"{}\", \"status\":0}",
                     SoaCode.NoMatchedMethod,
                     "method:" + methodName + " for service:" + clientInfo.serviceName + " not found");
             return CompletableFuture.completedFuture(resp);
         }
+
         try {
             String sessionTid = InvocationContextImpl.Factory.currentInstance().sessionTid().map(DapengUtil::longToHexStr).orElse("0");
             MDC.put(SoaSystemEnvProperties.KEY_LOGGER_SESSION_TID, sessionTid);
 
-            Method method = targetMethods.get(0);
+            OptimizedMetadata.OptimizedStruct req = optimizedService.getOptimizedStructs().get(method.request.namespace + "." + method.request.name);
+            OptimizedMetadata.OptimizedStruct resp = optimizedService.getOptimizedStructs().get(method.request.namespace + "." + method.response.name);
 
 
-            JsonSerializer jsonEncoder = new JsonSerializer(service, method, clientInfo.version, method.request);
-            JsonSerializer jsonDecoder = new JsonSerializer(service, method, clientInfo.version, method.response);
+            JsonSerializer jsonEncoder = new JsonSerializer(optimizedService, method, clientInfo.version, req);
+            JsonSerializer jsonDecoder = new JsonSerializer(optimizedService, method, clientInfo.version, resp);
 
             final long beginTime = System.currentTimeMillis();
 
-            LOGGER.info("soa-request: service:[" + service.namespace + "." + service.name
-                    + ":" + service.meta.version + "], method:" + methodName + ", param:"
+            Service origService = optimizedService.getService();
+
+            LOGGER.info("soa-request: service:[" + origService.namespace + "." + origService.name
+                    + ":" + origService.meta.version + "], method:" + methodName + ", param:"
                     + jsonParameter);
 
             Future<String> jsonResponse = postAsync(clientInfo.serviceName, clientInfo.version,

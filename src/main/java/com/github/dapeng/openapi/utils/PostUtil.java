@@ -10,9 +10,11 @@ import com.github.dapeng.core.helper.DapengUtil;
 import com.github.dapeng.core.helper.IPUtils;
 import com.github.dapeng.core.helper.SoaSystemEnvProperties;
 import com.github.dapeng.core.metadata.Service;
+import com.github.dapeng.json.OptimizedMetadata;
 import com.github.dapeng.openapi.cache.ServiceCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Set;
@@ -58,7 +60,7 @@ public class PostUtil {
                                boolean clearInvocationContext) {
         InvocationContextImpl invocationCtx = (InvocationContextImpl) createInvocationCtx(service, version, method, req);
 
-        Service bizService = ServiceCache.getService(service, version);
+        OptimizedMetadata.OptimizedService bizService = ServiceCache.getService(service, version);
 
         if (bizService == null) {
             LOGGER.error("bizService not found[service:" + service + ", version:" + version + "]");
@@ -105,7 +107,7 @@ public class PostUtil {
                                             boolean clearInvocationContext) {
         InvocationContextImpl invocationCtx = (InvocationContextImpl) createInvocationCtx(service, version, method, req);
 
-        Service bizService = ServiceCache.getService(service, version);
+        OptimizedMetadata.OptimizedService bizService = ServiceCache.getService(service, version);
 
         if (bizService == null) {
             LOGGER.error("bizService not found[service:" + service + ", version:" + version + "]");

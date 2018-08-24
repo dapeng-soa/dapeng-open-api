@@ -3,6 +3,7 @@ package com.github.dapeng.openapi.cache;
 
 import com.github.dapeng.core.SoaException;
 import com.github.dapeng.core.metadata.*;
+import com.github.dapeng.json.OptimizedMetadata;
 import com.github.dapeng.metadata.MetadataClient;
 import com.github.dapeng.registry.ServiceInfo;
 import org.slf4j.Logger;
@@ -27,7 +28,7 @@ public class ServiceCache {
      * 以服务的SimpleName和version拼接作为key，保存服务元数据的map
      * etc. AdminSkuPriceService:1.0.0 -> 元信息
      */
-    private static Map<String, Service> services = Collections.synchronizedMap(new TreeMap<>());
+    private static Map<String, OptimizedMetadata.OptimizedService> services = Collections.synchronizedMap(new TreeMap<>());
     /**
      * 以服务的全限定名和 version 拼接作为key，保存服务的实例信息
      * etc. com.today.api.skuprice.service.AdminSkuPriceService:1.0.0  -> ServiceInfo 实例信息
@@ -37,7 +38,7 @@ public class ServiceCache {
      * 以服务的全限定名和version拼接作为key，保存服务元数据的map
      * etc. AdminSkuPriceService:1.0.0 -> 元信息
      */
-    private static Map<String, Service> fullNameService = Collections.synchronizedMap(new TreeMap<>());
+    private static Map<String, OptimizedMetadata.OptimizedService> fullNameService = Collections.synchronizedMap(new TreeMap<>());
     /**
      * 只针对文档站点进行使用。url展示
      */
@@ -156,7 +157,9 @@ public class ServiceCache {
                             //com.today.api.skuprice.service.AdminSkuPriceService:1.0.0
                             String fullNameKey = getFullNameKey(serviceData);
 
-                            services.put(serviceKey, serviceData);
+                            OptimizedMetadata.OptimizedService optimizedService = new OptimizedMetadata.OptimizedService(serviceData);
+
+                            services.put(serviceKey, optimizedService);
 
                             serverInfoMap.put(fullNameKey, info);
 
@@ -166,7 +169,7 @@ public class ServiceCache {
                             services.forEach((k, v) -> logBuilder.append(k + ",  "));
                             LOGGER.info("zk 服务实例列表: {}", logBuilder);
 
-                            fullNameService.put(fullNameKey, serviceData);
+                            fullNameService.put(fullNameKey, optimizedService);
 
                             if (needLoadUrl) {
                                 loadServiceUrl(serviceData);
@@ -245,7 +248,7 @@ public class ServiceCache {
     }
 
 
-    public static Service getService(String name, String version) {
+    public static OptimizedMetadata.OptimizedService getService(String name, String version) {
 
         if (name.contains(".")) {
             return fullNameService.get(getKey(name, version));
@@ -266,7 +269,7 @@ public class ServiceCache {
         return name + ":" + version;
     }
 
-    public static Map<String, Service> getServices() {
+    public static Map<String, OptimizedMetadata.OptimizedService> getServices() {
         return services;
     }
 

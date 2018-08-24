@@ -11,7 +11,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
-        <dapeng.version>2.0.4</dapeng.version>
+        <dapeng.version>2.0.5</dapeng.version>
     </properties>
 
     <dependencies>
