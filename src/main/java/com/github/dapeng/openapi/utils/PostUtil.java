@@ -10,6 +10,7 @@ import com.github.dapeng.core.helper.DapengUtil;
 import com.github.dapeng.core.helper.IPUtils;
 import com.github.dapeng.core.helper.SoaSystemEnvProperties;
 import com.github.dapeng.core.metadata.Service;
+import com.github.dapeng.json.OptimizedMetadata;
 import com.github.dapeng.openapi.cache.ServiceCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,7 @@ public class PostUtil {
 
         invocationCtx.codecProtocol(CodecProtocol.CompressedBinary);
 
-        Service bizService = ServiceCache.getService(service, version);
+        OptimizedMetadata.OptimizedService bizService = ServiceCache.getService(service, version);
 
         if (bizService == null) {
             LOGGER.error("bizService not found[service:" + service + ", version:" + version + "]");
