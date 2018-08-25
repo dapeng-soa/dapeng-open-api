@@ -115,7 +115,7 @@ public class PostUtil {
         }
         fillInvocationCtx(invocationCtx, req);
 
-        AsyncJsonPost jsonPost = new AsyncJsonPost(service, version, method, true);
+        JsonPost jsonPost = new JsonPost(service, version, method, true);
 
         try {
             return jsonPost.callServiceMethodAsync(parameter, bizService);
@@ -150,9 +150,9 @@ public class PostUtil {
         }
         if (!invocationCtx.timeout().isPresent()) {
             //设置请求超时时间,从环境变量获取
-            int timeOut = getEnvTimeOut();
+            long timeOut = getEnvTimeOut();
             if (timeOut > 0) {
-                invocationCtx.timeout(timeOut);
+                invocationCtx.timeout((int)timeOut);
             }
         }
         invocationCtx.codecProtocol(CodecProtocol.CompressedBinary);
@@ -186,8 +186,8 @@ public class PostUtil {
     }
 
 
-    private static int getEnvTimeOut() {
-        return SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT.intValue();
+    private static long getEnvTimeOut() {
+        return SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT;
     }
 
 

@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
  * @author hz.lei
  * @since 2018年08月21日 下午3:10
  */
+@Deprecated
 public class AsyncJsonPost {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AsyncJsonPost.class);
@@ -72,9 +73,12 @@ public class AsyncJsonPost {
             String sessionTid = InvocationContextImpl.Factory.currentInstance().sessionTid().map(DapengUtil::longToHexStr).orElse("0");
             MDC.put(SoaSystemEnvProperties.KEY_LOGGER_SESSION_TID, sessionTid);
 
-            OptimizedMetadata.OptimizedStruct req = optimizedService.getOptimizedStructs().get(method.request.namespace + "." + method.request.name);
-            OptimizedMetadata.OptimizedStruct resp = optimizedService.getOptimizedStructs().get(method.request.namespace + "." + method.response.name);
+            OptimizedMetadata.OptimizedStruct req = optimizedService.getOptimizedStructs().get(optimizedService.getService().name + "." + method.request.name);
+            OptimizedMetadata.OptimizedStruct resp = optimizedService.getOptimizedStructs().get(optimizedService.getService().name + "." + method.response.name);
 
+            if (req == null || resp == null) {
+                LOGGER.error("req namespace:" + method.request.namespace + " name:" + method.request.name);
+            }
 
             JsonSerializer jsonEncoder = new JsonSerializer(optimizedService, method, clientInfo.version, req);
             JsonSerializer jsonDecoder = new JsonSerializer(optimizedService, method, clientInfo.version, resp);
