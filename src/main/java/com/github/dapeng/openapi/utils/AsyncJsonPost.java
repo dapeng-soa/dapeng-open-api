@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
  * @author hz.lei
  * @since 2018年08月21日 下午3:10
  */
+@Deprecated
 public class AsyncJsonPost {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AsyncJsonPost.class);
