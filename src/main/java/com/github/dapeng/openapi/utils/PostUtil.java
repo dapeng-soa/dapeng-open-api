@@ -36,10 +36,10 @@ public class PostUtil {
     }
 
     public static Future<String> postAsync(String service,
-                                   String version,
-                                   String method,
-                                   String parameter,
-                                   HttpServletRequest req) {
+                                           String version,
+                                           String method,
+                                           String parameter,
+                                           HttpServletRequest req) {
         return postAsync(service, version, method, parameter, req, true);
     }
 
@@ -187,7 +187,7 @@ public class PostUtil {
 
 
     private static int getEnvTimeOut() {
-        return SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT.intValue();
+        return (int) SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT;
     }
 
 
