@@ -35,14 +35,6 @@ public class PostUtil {
         return post(service, version, method, parameter, req, true);
     }
 
-    public static Future<String> postAsync(String service,
-                                   String version,
-                                   String method,
-                                   String parameter,
-                                   HttpServletRequest req) {
-        return postAsync(service, version, method, parameter, req, true);
-    }
-
     /**
      * @param service
      * @param version
@@ -152,7 +144,7 @@ public class PostUtil {
             //设置请求超时时间,从环境变量获取
             long timeOut = getEnvTimeOut();
             if (timeOut > 0) {
-                invocationCtx.timeout((int)timeOut);
+                invocationCtx.timeout((int) timeOut);
             }
         }
         invocationCtx.codecProtocol(CodecProtocol.CompressedBinary);
@@ -186,8 +178,8 @@ public class PostUtil {
     }
 
 
-    private static long getEnvTimeOut() {
-        return SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT;
+    private static int getEnvTimeOut() {
+        return (int) SoaSystemEnvProperties.SOA_SERVICE_TIMEOUT;
     }
 
 
