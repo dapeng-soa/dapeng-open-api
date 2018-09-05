@@ -286,8 +286,8 @@ public class ZookeeperClient {
      */
     public synchronized void filterInitWhiteList(Set<String> services) {
         connect(Constants.SERVICE_WITHELIST_PATH, services);
+        filterServersList(services);
         LOGGER.info("api-gate-way service load successful");
-//        filterServersList(services);
     }
 
     /**
