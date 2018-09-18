@@ -15,6 +15,40 @@
         <dapeng.version>2.0.5</dapeng.version>
     </properties>
 
+    <name>dapeng-open-api</name>
+    <description>dapeng-soa的开放接口模块, 用于代理/转换json请求到dapeng服务.</description>
+    <url>https://github.com/dapeng-soa/dapeng-open-api</url>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>ever</name>
+            <email>439674061@qq.com</email>
+        </developer>
+        <developer>
+            <name>maple</name>
+            <email>295482300@qq.com</email>
+        </developer>
+        <developer>
+            <name>jackliang18588733858</name>
+            <email>232942977@qq.com</email>
+        </developer>
+        <developer>
+            <name>StruggleYang</name>
+            <email>1724555319@qq.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:https://github.com/dapeng-soa/dapeng-open-api.git</connection>
+        <developerConnection>scm:https://github.com/dapeng-soa/dapeng-open-api.git</developerConnection>
+        <url>https://github.com/dapeng-soa/dapeng-open-api.git</url>
+    </scm>
+
     <dependencies>
         <dependency>
             <groupId>com.github.dapeng</groupId>
