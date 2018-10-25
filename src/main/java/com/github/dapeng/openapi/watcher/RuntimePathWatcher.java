@@ -22,10 +22,11 @@ public class RuntimePathWatcher implements Watcher {
 
     @Override
     public void process(WatchedEvent event) {
+        LOGGER.warn("RuntimePathWatcher::process zkEvent: " + event);
         if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
             //Children发生变化，则重新获取最新的services列表
             if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-                LOGGER.info("RuntimePathWatcher::services的子节点发生变化, 重新获取子节点。具体path: {}", event.getPath());
+                LOGGER.info("RuntimePathWatcher::services的子节点发生变化, 重新获取子节点。Event: {}", event);
                 ZookeeperClient zkClient = ZookeeperClient.getCurrInstance(EnvUtil.prepareEnv());
                 zkClient.getServersList(needLoadUrl);
             }

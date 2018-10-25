@@ -56,6 +56,7 @@ public class ZookeeperClient {
             synchronized (ZookeeperClient.class) {
                 zkClient = zookeeperClientMap.get(zookeeperHost);
                 if (zkClient == null) {
+                    LOGGER.warn("Create new zkClient for " + zookeeperHost);
                     zkClient = new ZookeeperClient(zookeeperHost);
                     zookeeperClientMap.put(zookeeperHost, zkClient);
                 }
@@ -189,7 +190,7 @@ public class ZookeeperClient {
             CountDownLatch semaphore = new CountDownLatch(1);
 
             zk = new ZooKeeper(zookeeperHost, 15000, e -> {
-
+                LOGGER.warn("ZookeeperClient::connect zkEvent: " + e);
                 switch (e.getState()) {
                     case Expired:
                         LOGGER.info("zookeeper Watcher 到zookeeper Server的session过期，重连");
@@ -252,6 +253,7 @@ public class ZookeeperClient {
         caches.clear();
         try {
             List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, watchedEvent -> {
+                LOGGER.warn("ZookeeperClient::filterServersList zkEvent: " + watchedEvent);
                 //Children发生变化，则重新获取最新的services列表
                 if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
@@ -377,6 +379,7 @@ public class ZookeeperClient {
      * 异步添加持久化节点回调方法
      */
     private AsyncCallback.StringCallback persistNodeCreateCallback = (rc, path, ctx, name) -> {
+        LOGGER.warn("ZookeeperClient::persistNodeCreateCallback zkEvent: " + rc + ", " + path + ", " + name);
         switch (KeeperException.Code.get(rc)) {
             case CONNECTIONLOSS:
                 LOGGER.info("创建节点:{},连接断开，重新创建", path);
@@ -405,6 +408,7 @@ public class ZookeeperClient {
 
         try {
             List<String> children = zk.getChildren(Constants.SERVICE_WITHELIST_PATH, event -> {
+                LOGGER.warn("ZookeeperClient::watchInstanceChange zkEvent: " + event);
                 //Children发生变化，则重新获取最新的services列表
                 if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
                     LOGGER.info("[{}] 服务白名单发生变化，重新获取...", event.getPath());
