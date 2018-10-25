@@ -1,8 +1,8 @@
 package com.github.dapeng.openapi.cache;
 
 import com.github.dapeng.openapi.utils.Constants;
-import com.github.dapeng.openapi.watch.RuntimePathWatcher;
-import com.github.dapeng.openapi.watch.ServicesWatcher;
+import com.github.dapeng.openapi.watcher.RuntimePathWatcher;
+import com.github.dapeng.openapi.watcher.ServicesWatcher;
 import com.github.dapeng.registry.ServiceInfo;
 import com.github.dapeng.registry.zookeeper.WatcherUtils;
 import org.apache.zookeeper.*;

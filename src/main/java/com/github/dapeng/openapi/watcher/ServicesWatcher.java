@@ -1,4 +1,4 @@
-package com.github.dapeng.openapi.watch;
+package com.github.dapeng.openapi.watcher;
 
 import com.github.dapeng.openapi.cache.ZookeeperClient;
 import com.github.dapeng.openapi.utils.EnvUtil;
