@@ -1,6 +1,8 @@
 package com.github.dapeng.openapi.cache;
 
 import com.github.dapeng.openapi.utils.Constants;
+import com.github.dapeng.openapi.watch.RuntimePathWatcher;
+import com.github.dapeng.openapi.watch.ServicesWatcher;
 import com.github.dapeng.registry.ServiceInfo;
 import com.github.dapeng.registry.zookeeper.WatcherUtils;
 import org.apache.zookeeper.*;
@@ -21,17 +23,19 @@ import static org.apache.zookeeper.ZooKeeper.States.CONNECTED;
  * @date 2018/1/12 17:26
  */
 public class ZookeeperClient {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperClient.class);
 
     private final static Map<String, List<ServiceInfo>> caches = new ConcurrentHashMap<>();
-    private final static Map<String, ZookeeperClient> zookeeperClientMap = new ConcurrentHashMap<>();
+    private final static Map<String, ZookeeperClient> zookeeperClientMap = new HashMap<>(4);
+
+    private final static Map<String, ServicesWatcher> servicesWatcherMap = new ConcurrentHashMap<>();
+
+    private RuntimePathWatcher runtimePathWatcher;
 
     private String zookeeperHost;
 
     private ZooKeeper zk;
 
-    //private static ZookeeperClient zookeeperClient;
 
     private static Set<String> whitelist = Collections.synchronizedSet(new HashSet<>());
 
@@ -42,14 +46,20 @@ public class ZookeeperClient {
     public synchronized void init(boolean needLoadUrl) {
         connect(null, null);
         LOGGER.info("wait for lock");
+        runtimePathWatcher = new RuntimePathWatcher(needLoadUrl);
         getServersList(needLoadUrl);
     }
 
     public static ZookeeperClient getCurrInstance(String zookeeperHost) {
         ZookeeperClient zkClient = zookeeperClientMap.get(zookeeperHost);
-        if (null == zkClient) {
-            zkClient = new ZookeeperClient(zookeeperHost);
-            zookeeperClientMap.put(zookeeperHost, zkClient);
+        if (zkClient == null) {
+            synchronized (ZookeeperClient.class) {
+                zkClient = zookeeperClientMap.get(zookeeperHost);
+                if (zkClient == null) {
+                    zkClient = new ZookeeperClient(zookeeperHost);
+                    zookeeperClientMap.put(zookeeperHost, zkClient);
+                }
+            }
         }
         return zkClient;
     }
@@ -102,16 +112,10 @@ public class ZookeeperClient {
      * @return
      * @author maple.lei
      */
-    private void getServersList(boolean needLoadUrl) {
+    public synchronized void getServersList(boolean needLoadUrl) {
         caches.clear();
         try {
-            List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, watchedEvent -> {
-                //Children发生变化，则重新获取最新的services列表
-                if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-                    LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
-                    getServersList(needLoadUrl);
-                }
-            });
+            List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, runtimePathWatcher);
 
             //线程池并行操作
             int processor = Runtime.getRuntime().availableProcessors() >= 4 ? Runtime.getRuntime().availableProcessors() : 4;
@@ -139,19 +143,20 @@ public class ZookeeperClient {
      *
      * @param serviceName
      */
-    private void getServiceInfoByServiceName(String serviceName, boolean needLoadUrl) {
+    public void getServiceInfoByServiceName(String serviceName, boolean needLoadUrl) {
         String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
         try {
             if (zk == null) {
                 init(needLoadUrl);
             }
+            ServicesWatcher watcher = servicesWatcherMap.get(servicePath);
 
-            List<String> children = zk.getChildren(servicePath, watchedEvent -> {
-                if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-                    LOGGER.info("{}子节点发生变化，重新获取信息", watchedEvent.getPath());
-                    getServiceInfoByServiceName(serviceName, needLoadUrl);
-                }
-            });
+            if (watcher == null) {
+                watcher = new ServicesWatcher(serviceName, needLoadUrl);
+                servicesWatcherMap.putIfAbsent(servicePath, watcher);
+            }
+
+            List<String> children = zk.getChildren(servicePath, watcher);
 
             if (children.size() == 0) {
                 //移除这个没有运行服务的相关信息...
@@ -163,9 +168,11 @@ public class ZookeeperClient {
                 ServiceCache.loadServicesMetadata(serviceName, caches.get(serviceName), needLoadUrl);
                 LOGGER.info("getServiceInfoByServiceName 解析服务 {} 元数据信息结束", serviceName);
             }
-        } catch (KeeperException | InterruptedException e) {
+        } catch (KeeperException |
+                InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
+
     }
 
     /**
@@ -252,7 +259,7 @@ public class ZookeeperClient {
                 }
             });
 
-            List<String> result = children.stream().filter(path -> childrenPath.contains(path)).collect(Collectors.toList());
+            List<String> result = children.stream().filter(childrenPath::contains).collect(Collectors.toList());
             LOGGER.info("[filter service]:过滤元数据信息结果:" + result.toString());
 
             //线程池并行操作
