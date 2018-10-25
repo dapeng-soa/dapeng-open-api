@@ -9,12 +9,10 @@ import com.github.dapeng.core.enums.CodecProtocol;
 import com.github.dapeng.core.helper.DapengUtil;
 import com.github.dapeng.core.helper.IPUtils;
 import com.github.dapeng.core.helper.SoaSystemEnvProperties;
-import com.github.dapeng.core.metadata.Service;
 import com.github.dapeng.json.OptimizedMetadata;
 import com.github.dapeng.openapi.cache.ServiceCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Set;
@@ -92,11 +90,11 @@ public class PostUtil {
      * @return
      */
     public static Future<String> postAsync(String service,
-                                            String version,
-                                            String method,
-                                            String parameter,
-                                            HttpServletRequest req,
-                                            boolean clearInvocationContext) {
+                                           String version,
+                                           String method,
+                                           String parameter,
+                                           HttpServletRequest req,
+                                           boolean clearInvocationContext) {
         InvocationContextImpl invocationCtx = (InvocationContextImpl) createInvocationCtx(service, version, method, req);
 
         OptimizedMetadata.OptimizedService bizService = ServiceCache.getService(service, version);

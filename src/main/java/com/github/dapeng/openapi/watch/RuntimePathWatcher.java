@@ -1,14 +1,11 @@
 package com.github.dapeng.openapi.watch;
 
 import com.github.dapeng.openapi.cache.ZookeeperClient;
-import com.github.dapeng.openapi.utils.Constants;
 import com.github.dapeng.openapi.utils.EnvUtil;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 /**
  * @author <a href=mailto:leihuazhe@gmail.com>maple</a>

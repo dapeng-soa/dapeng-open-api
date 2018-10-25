@@ -6,7 +6,6 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -121,7 +120,7 @@ public class ZkUtil {
     //==============================================添加节点data
 
     public static synchronized void createData(ZooKeeper zooKeeper, String path, String data) throws Exception {
-        createNode(zooKeeper,path, false);
+        createNode(zooKeeper, path, false);
         if (checkExists(zooKeeper, path)) {
             LOGGER.info(" start to set data from: " + path);
             zooKeeper.setData(path, data.getBytes(), -1, null, data);
@@ -156,7 +155,7 @@ public class ZkUtil {
     }
 
     //==============================================无需watch获取zk节点数
-    public static synchronized List<String> getNodeChildren(ZooKeeper zooKeeper, String path,Boolean watch) {
+    public static synchronized List<String> getNodeChildren(ZooKeeper zooKeeper, String path, Boolean watch) {
         try {
             if (checkExists(zooKeeper, path)) {
                 LOGGER.info("get zk NodeChild on [{}]", path);
