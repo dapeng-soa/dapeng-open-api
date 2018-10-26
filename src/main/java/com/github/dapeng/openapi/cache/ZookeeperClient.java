@@ -152,9 +152,9 @@ public class ZookeeperClient {
             ServicesWatcher watcher = servicesWatcherMap.get(servicePath);
 
             if (watcher == null) {
-                watcher = new ServicesWatcher(serviceName, needLoadUrl);
-                servicesWatcherMap.putIfAbsent(servicePath, watcher);
+                servicesWatcherMap.putIfAbsent(servicePath, new ServicesWatcher(serviceName, needLoadUrl));
             }
+            watcher = servicesWatcherMap.get(servicePath);
 
             List<String> children = zk.getChildren(servicePath, watcher);
 
