@@ -1,10 +1,10 @@
 package com.github.dapeng.openapi.cache;
 
 
+import com.github.dapeng.client.netty.MetadataUtils;
 import com.github.dapeng.core.SoaException;
 import com.github.dapeng.core.metadata.*;
 import com.github.dapeng.json.OptimizedMetadata;
-import com.github.dapeng.metadata.MetadataClient;
 import com.github.dapeng.registry.ServiceInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,11 +141,11 @@ public class ServiceCache {
             while (tryCount <= 3) {
                 try {
                     LOGGER.info("begin to fetch metadataClient ...");
-                    MetadataClient metadataClient = new MetadataClient(serviceName, version);
-                    metadata = metadataClient.getServiceMetadata();
+                    /*MetadataClient metadataClient = new MetadataClient(serviceName, version);
+                    metadata = metadataClient.getServiceMetadata();*/
 
                     //TODO 命令行 需要这样写 (请不要删除)
-                    //metadata = MetadataUtils.getRomoteServiceMetadata(info.host, info.port, serviceName, version);
+                    metadata = MetadataUtils.getRomoteServiceMetadata(info.host, info.port, serviceName, version);
 
                     LOGGER.info("fetched the  metadataClient, metadata:{}", metadata.substring(0, 100));
                     if (metadata != null) {
