@@ -42,7 +42,7 @@ public class PostUtil {
      * @param clearInvocationContext 是否清理InvocationContext. 如果不清理, 调用端负责清理
      * @return
      */
-    private static String post(String service,
+    public static String post(String service,
                                String version,
                                String method,
                                String parameter,
