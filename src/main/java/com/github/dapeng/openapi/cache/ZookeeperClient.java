@@ -5,6 +5,7 @@ import com.github.dapeng.openapi.watcher.RuntimePathWatcher;
 import com.github.dapeng.openapi.watcher.ServicesWatcher;
 import com.github.dapeng.registry.ServiceInfo;
 import com.github.dapeng.registry.zookeeper.WatcherUtils;
+import com.github.dapeng.registry.zookeeper.ZkUtils;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
@@ -93,6 +94,8 @@ public class ZookeeperClient {
             LOGGER.error(e.getMessage(), e);
         }
 
+        zk = null;
+
         LOGGER.info("关闭当前zk连接");
     }
 
@@ -134,6 +137,9 @@ public class ZookeeperClient {
             executorService.awaitTermination(1, TimeUnit.HOURS);
             //主线程继续
             LOGGER.info("<<<<<<<<<< 子线程解析服务元数据结束,耗时:{} ms.  主线程继续执行 >>>>>>>>>>", (System.currentTimeMillis() - beginTime));
+        } catch (KeeperException.NoNodeException e) {
+            ZkUtils.create(Constants.SERVICE_RUNTIME_PATH, "", null, false, null, zk);
+            getServersList(needLoadUrl);
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
@@ -194,7 +200,7 @@ public class ZookeeperClient {
                 switch (e.getState()) {
                     case Expired:
                         LOGGER.info("zookeeper Watcher 到zookeeper Server的session过期，重连");
-//                        destroy();
+                        disconnect();
                         reset();
                         break;
 
@@ -213,7 +219,10 @@ public class ZookeeperClient {
 
                     case Disconnected:
                         LOGGER.info("Zookeeper Watcher 连接不上了");
-                        //zk断了之后, 会自动重连
+                        // zk断了之后, 会自动重连, 一般不需要对该事件做处理
+                        // 但是zk服务端如果重建的话，自动重连是永远都连不上的。这时候需要重建zk客户端
+                        disconnect();
+                        reset();
                         break;
 
                     case AuthFailed:
