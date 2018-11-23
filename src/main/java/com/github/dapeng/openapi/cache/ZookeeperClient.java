@@ -201,7 +201,7 @@ public class ZookeeperClient {
                     case Expired:
                         LOGGER.info("zookeeper Watcher 到zookeeper Server的session过期，重连");
                         disconnect();
-                        connect(caseParams,0);
+                        connect(caseParams, o);
                         break;
 
                     case SyncConnected:
@@ -222,7 +222,7 @@ public class ZookeeperClient {
                         // zk断了之后, 会自动重连, 一般不需要对该事件做处理
                         // 但是zk服务端如果重建的话，自动重连是永远都连不上的。这时候需要重建zk客户端
                         disconnect();
-                        connect(caseParams,0);
+                        connect(caseParams,o);
                         break;
 
                     case AuthFailed:
