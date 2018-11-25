@@ -25,6 +25,10 @@ public class ServicesWatcher implements Watcher {
     @Override
     public void process(WatchedEvent event) {
         LOGGER.warn("ServicesWatcher::process zkEvent: " + event);
+        if (event.getPath() == null) {
+            LOGGER.warn(getClass() + "::process Just ignore this event.");
+            return;
+        }
         if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
             LOGGER.info("ServicesWatcher watch 服务path: {} 的子节点发生变化，重新获取信息", event.getPath());
             ZookeeperClient zkClient = ZookeeperClient.getCurrInstance(EnvUtil.prepareEnv());
