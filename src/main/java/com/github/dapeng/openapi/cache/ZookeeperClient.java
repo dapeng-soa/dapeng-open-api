@@ -1,13 +1,10 @@
 package com.github.dapeng.openapi.cache;
 
 import com.github.dapeng.openapi.utils.Constants;
-import com.github.dapeng.openapi.watcher.RuntimePathWatcher;
-import com.github.dapeng.openapi.watcher.ServicesWatcher;
 import com.github.dapeng.registry.ServiceInfo;
 import com.github.dapeng.registry.zookeeper.WatcherUtils;
 import com.github.dapeng.registry.zookeeper.ZkUtils;
 import org.apache.zookeeper.*;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,43 +24,27 @@ public class ZookeeperClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZookeeperClient.class);
 
     private final static Map<String, List<ServiceInfo>> caches = new ConcurrentHashMap<>();
-    private final static Map<String, ZookeeperClient> zookeeperClientMap = new HashMap<>(4);
 
     private final static Map<String, ServicesWatcher> servicesWatcherMap = new ConcurrentHashMap<>();
 
-    private RuntimePathWatcher runtimePathWatcher;
+    private final RuntimePathWatcher runtimePathWatcher = new RuntimePathWatcher();
 
-    private String zookeeperHost;
+    private final String zookeeperHost;
 
     private ZooKeeper zk;
 
+    protected boolean needLoadUrl = false;
 
     private static Set<String> whitelist = Collections.synchronizedSet(new HashSet<>());
 
-    private ZookeeperClient(String zookeeperHost) {
+    ZookeeperClient(final String zookeeperHost) {
         this.zookeeperHost = zookeeperHost;
     }
 
     public synchronized void init(boolean needLoadUrl) {
+        this.needLoadUrl = needLoadUrl;
         connect(null, null);
         LOGGER.info("wait for lock");
-        runtimePathWatcher = new RuntimePathWatcher(needLoadUrl);
-        getServersList(needLoadUrl);
-    }
-
-    public static ZookeeperClient getCurrInstance(String zookeeperHost) {
-        ZookeeperClient zkClient = zookeeperClientMap.get(zookeeperHost);
-        if (zkClient == null) {
-            synchronized (ZookeeperClient.class) {
-                zkClient = zookeeperClientMap.get(zookeeperHost);
-                if (zkClient == null) {
-                    LOGGER.warn("Create new zkClient for " + zookeeperHost);
-                    zkClient = new ZookeeperClient(zookeeperHost);
-                    zookeeperClientMap.put(zookeeperHost, zkClient);
-                }
-            }
-        }
-        return zkClient;
     }
 
     private synchronized void reset() {
@@ -107,50 +88,12 @@ public class ZookeeperClient {
         return whitelist;
     }
 
-
-    /**
-     * 获取zookeeper中的services节点的子节点，并设置监听器
-     * <p>
-     * 取消每次都重置所有服务信息，采用 增量 和 减量 形式
-     *
-     * @return
-     * @author maple.lei
-     */
-    public synchronized void getServersList(boolean needLoadUrl) {
-        caches.clear();
-        try {
-            List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, runtimePathWatcher);
-
-            //线程池并行操作
-            int processor = Runtime.getRuntime().availableProcessors() >= 4 ? Runtime.getRuntime().availableProcessors() : 4;
-            ExecutorService executorService = Executors.newFixedThreadPool(processor);
-            LOGGER.info("获取所有runtime下面的节点信息，开始解析服务元信息,处理线程数量 {}", processor);
-
-            long beginTime = System.currentTimeMillis();
-            children.forEach(serviceName -> {
-                executorService.execute(() -> {
-                    LOGGER.info("子线程解析服务:{} 元数据信息", serviceName);
-                    getServiceInfoByServiceName(serviceName, needLoadUrl);
-                });
-            });
-            executorService.shutdown();
-            executorService.awaitTermination(1, TimeUnit.HOURS);
-            //主线程继续
-            LOGGER.info("<<<<<<<<<< 子线程解析服务元数据结束,耗时:{} ms.  主线程继续执行 >>>>>>>>>>", (System.currentTimeMillis() - beginTime));
-        } catch (KeeperException.NoNodeException e) {
-            ZkUtils.create(Constants.SERVICE_RUNTIME_PATH, "", null, false, null, zk);
-            getServersList(needLoadUrl);
-        } catch (KeeperException | InterruptedException e) {
-            LOGGER.error(e.getMessage(), e);
-        }
-    }
-
     /**
      * 根据serviceName节点的路径，获取下面的子节点，并监听子节点变化
      *
      * @param serviceName
      */
-    public void getServiceInfoByServiceName(String serviceName, boolean needLoadUrl) {
+    public void getServiceInfoByServiceName(String serviceName) {
         String servicePath = Constants.SERVICE_RUNTIME_PATH + "/" + serviceName;
         try {
             if (zk == null) {
@@ -159,7 +102,7 @@ public class ZookeeperClient {
             ServicesWatcher watcher = servicesWatcherMap.get(servicePath);
 
             if (watcher == null) {
-                servicesWatcherMap.putIfAbsent(servicePath, new ServicesWatcher(serviceName, needLoadUrl));
+                servicesWatcherMap.putIfAbsent(servicePath, new ServicesWatcher(serviceName));
                 watcher = servicesWatcherMap.get(servicePath);
             }
 
@@ -207,7 +150,7 @@ public class ZookeeperClient {
                     case SyncConnected:
                         semaphore.countDown();
                         LOGGER.info("Zookeeper Watcher 已连接 zookeeper Server,Zookeeper host: {}", zookeeperHost);
-                        if (null != caseParams)
+                        if (null != caseParams) {
                             switch (caseParams) {
                                 case Constants.SERVICE_WITHELIST_PATH:
                                     if (null != o) this.registerServiceWhiteList((Set<String>) o);
@@ -215,6 +158,9 @@ public class ZookeeperClient {
                                 default:
                                     break;
                             }
+                        } else {
+                            filterServersList();
+                        }
                         break;
 
                     case Disconnected:
@@ -222,7 +168,7 @@ public class ZookeeperClient {
                         // zk断了之后, 会自动重连, 一般不需要对该事件做处理
                         // 但是zk服务端如果重建的话，自动重连是永远都连不上的。这时候需要重建zk客户端
                         disconnect();
-                        connect(caseParams,o);
+                        connect(caseParams, o);
                         break;
 
                     case AuthFailed:
@@ -248,29 +194,20 @@ public class ZookeeperClient {
      * 针对指定的从服务过滤，只获取指定的服务元信息
      */
     public synchronized void filterInit(Set<String> paths) {
+        whitelist.addAll(paths);
         connect(null, null);
         LOGGER.info("wait for lock");
-        filterServersList(paths);
     }
 
     /**
      * 只获取指定的元数据信息
-     *
-     * @param childrenPath
      */
-    private void filterServersList(Set<String> childrenPath) {
+    private void filterServersList() {
         caches.clear();
         try {
-            List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, watchedEvent -> {
-                LOGGER.warn("ZookeeperClient::filterServersList zkEvent: " + watchedEvent);
-                //Children发生变化，则重新获取最新的services列表
-                if (watchedEvent.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
-                    LOGGER.info("{}子节点发生变化，重新获取子节点...", watchedEvent.getPath());
-                    filterServersList(childrenPath);
-                }
-            });
+            List<String> children = zk.getChildren(Constants.SERVICE_RUNTIME_PATH, runtimePathWatcher);
 
-            List<String> result = children.stream().filter(childrenPath::contains).collect(Collectors.toList());
+            List<String> result = whitelist.isEmpty() ? children : children.stream().filter(whitelist::contains).collect(Collectors.toList());
             LOGGER.info("[filter service]:过滤元数据信息结果:" + result.toString());
 
             //线程池并行操作
@@ -282,13 +219,16 @@ public class ZookeeperClient {
             result.forEach(serviceName -> {
                 executorService.execute(() -> {
                     LOGGER.info("子线程开始解析服务:{} 元数据信息", serviceName);
-                    getServiceInfoByServiceName(serviceName, false);
+                    getServiceInfoByServiceName(serviceName);
                 });
             });
             executorService.shutdown();
             executorService.awaitTermination(1, TimeUnit.HOURS);
             //主线程继续
             LOGGER.info("<<<<<<<<<< 子线程解析服务元数据结束,耗时:{} ms.  主线程继续执行 >>>>>>>>>>", (System.currentTimeMillis() - beginTime));
+        } catch (KeeperException.NoNodeException e) {
+            ZkUtils.create(Constants.SERVICE_RUNTIME_PATH, "", null, false, null, zk);
+            filterServersList();
         } catch (KeeperException | InterruptedException e) {
             LOGGER.error(e.getMessage(), e);
         }
@@ -303,8 +243,8 @@ public class ZookeeperClient {
      * @param services 用于过滤的服务列表
      */
     public synchronized void filterInitWhiteList(Set<String> services) {
+        whitelist.addAll(services);
         connect(Constants.SERVICE_WITHELIST_PATH, services);
-        filterServersList(services);
         LOGGER.info("api-gate-way service load successful");
     }
 
@@ -316,72 +256,11 @@ public class ZookeeperClient {
     private synchronized void registerServiceWhiteList(Set<String> services) {
         if (null != services) {
             services.forEach(s -> {
-                createNode(Constants.SERVICE_WITHELIST_PATH + "/" + s, false);
+                ZkUtils.create(Constants.SERVICE_WITHELIST_PATH + "/" + s, "", null, false, persistNodeCreateCallback, zk);
             });
             whitelist.addAll(services);
             watchInstanceChange();
         }
-    }
-
-    /**
-     * @param path
-     * @param ephemeral
-     */
-    public synchronized void createNode(String path, boolean ephemeral) {
-        if (zk == null) {
-            connect(null, null);
-        }
-        int i = path.lastIndexOf("/");
-        if (i > 0) {
-            String parentPath = path.substring(0, i);
-            //判断父节点是否存在...
-            if (!checkExists(parentPath)) {
-                createNode(parentPath, false);
-            }
-        }
-        if (ephemeral) {
-            // 创建临时节点
-        } else {
-            createPersistent(path, "");
-        }
-    }
-
-    /**
-     * 异步添加持久化的节点
-     *
-     * @param path
-     * @param data
-     */
-    private void createPersistent(String path, String data) {
-        Stat stat = exists(path);
-
-        if (stat == null) {
-            zk.create(path, data.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT, persistNodeCreateCallback, data);
-        }
-    }
-
-    private Stat exists(String path) {
-        Stat stat = null;
-        try {
-            stat = zk.exists(path, false);
-        } catch (KeeperException | InterruptedException e) {
-        }
-        return stat;
-    }
-
-    /**
-     * 检查节点是否存在
-     */
-    private boolean checkExists(String path) {
-        try {
-            Stat exists = zk.exists(path, false);
-            if (exists != null) {
-                return true;
-            }
-            return false;
-        } catch (Throwable t) {
-        }
-        return false;
     }
 
     /**
@@ -392,7 +271,7 @@ public class ZookeeperClient {
         switch (KeeperException.Code.get(rc)) {
             case CONNECTIONLOSS:
                 LOGGER.info("创建节点:{},连接断开，重新创建", path);
-                createPersistent(path, (String) ctx);
+                ZkUtils.create(path, (String) ctx, null, false, this.persistNodeCreateCallback, zk);
                 break;
             case OK:
                 LOGGER.info("创建节点:{},成功", path);
@@ -426,7 +305,7 @@ public class ZookeeperClient {
                 }
             });
             whitelist.addAll(children);
-            filterServersList(whitelist);
+            filterServersList();
             LOGGER.info("当前白名单个数:[{}]", whitelist.size());
             LOGGER.info(">>>>>>>>>>>>>>>>>>");
             StringBuilder sb = new StringBuilder(256);
@@ -441,4 +320,36 @@ public class ZookeeperClient {
 
     }
 
+    class RuntimePathWatcher implements Watcher {
+        @Override
+        public void process(WatchedEvent event) {
+            LOGGER.warn("RuntimePathWatcher::process zkEvent: " + event);
+            //Children发生变化，则重新获取最新的services列表
+            if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                LOGGER.info("RuntimePathWatcher::services的子节点发生变化, 重新获取子节点。Event: {}", event);
+                filterServersList();
+            }
+        }
+    }
+
+    class ServicesWatcher implements Watcher {
+        private final String serviceName;
+
+        public ServicesWatcher(String serviceName) {
+            this.serviceName = serviceName;
+        }
+
+        @Override
+        public void process(WatchedEvent event) {
+            LOGGER.warn("ServicesWatcher::process zkEvent: " + event);
+            if (event.getPath() == null) {
+                LOGGER.warn(getClass() + "::process Just ignore this event.");
+                return;
+            }
+            if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+                LOGGER.info("ServicesWatcher watch 服务path: {} 的子节点发生变化，重新获取信息", event.getPath());
+                getServiceInfoByServiceName(serviceName);
+            }
+        }
+    }
 }

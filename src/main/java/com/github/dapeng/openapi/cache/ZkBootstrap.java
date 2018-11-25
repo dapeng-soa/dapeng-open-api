@@ -22,14 +22,14 @@ public class ZkBootstrap {
      */
     public void openApiInit() {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = ZookeeperClient.getCurrInstance(zkHost);
+        zookeeperWatcher = new ZookeeperClient(zkHost);
         zookeeperWatcher.init(true);
     }
 
 
     public void init() {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = ZookeeperClient.getCurrInstance(zkHost);
+        zookeeperWatcher = new ZookeeperClient(zkHost);
         zookeeperWatcher.init(false);
     }
 
@@ -38,7 +38,7 @@ public class ZkBootstrap {
      */
     public void filterInit(Set<String> paths) {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = ZookeeperClient.getCurrInstance(zkHost);
+        zookeeperWatcher = new ZookeeperClient(zkHost);
         zookeeperWatcher.filterInit(paths);
     }
 
@@ -49,7 +49,7 @@ public class ZkBootstrap {
      */
     public void filterInitWhiteList(Set<String> services) {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = ZookeeperClient.getCurrInstance(zkHost);
+        zookeeperWatcher = new ZookeeperClient(zkHost);
         zookeeperWatcher.filterInitWhiteList(services);
     }
 }
