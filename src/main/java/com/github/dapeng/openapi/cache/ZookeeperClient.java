@@ -152,14 +152,13 @@ public class ZookeeperClient implements Watcher {
                 LOGGER.warn("ZookeeperClient::connect zkEvent: " + e);
                 switch (e.getState()) {
                     case Expired:
-                        LOGGER.info("zookeeper Watcher 到zookeeper Server的session过期，重连");
+                        LOGGER.info("ZookeeperClient::connect zookeeper Watcher 到zookeeper Server的session过期，重连");
                         disconnect();
                         connect(caseParams, o);
                         break;
 
                     case SyncConnected:
-                        semaphore.countDown();
-                        LOGGER.info("Zookeeper Watcher 已连接 zookeeper Server,Zookeeper host: {}", zookeeperHost);
+                        LOGGER.info("ZookeeperClient::connect Zookeeper Watcher 已连接 zookeeper Server,Zookeeper host: {}", zookeeperHost);
                         if (null != caseParams) {
                             switch (caseParams) {
                                 case Constants.SERVICE_WITHELIST_PATH:
@@ -171,6 +170,7 @@ public class ZookeeperClient implements Watcher {
                         } else {
                             filterServersList();
                         }
+                        semaphore.countDown();
                         break;
 
                     case Disconnected:
@@ -268,7 +268,7 @@ public class ZookeeperClient implements Watcher {
      *
      * @param services
      */
-    private synchronized void registerServiceWhiteList(Set<String> services) {
+    private void registerServiceWhiteList(Set<String> services) {
         if (null != services) {
             services.forEach(s -> {
                 ZkUtils.createPersistNodeOnly(Constants.SERVICE_WITHELIST_PATH + "/" + s, zk);
