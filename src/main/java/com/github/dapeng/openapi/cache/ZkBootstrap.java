@@ -15,22 +15,22 @@ import java.util.Set;
 public class ZkBootstrap {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZkBootstrap.class);
 
-    private ZookeeperClient zookeeperWatcher;
+    private ZookeeperClient zookeeperClient;
 
     /**
      * open api 启动，加载 urlMapping
      */
     public void openApiInit() {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = new ZookeeperClient(zkHost);
-        zookeeperWatcher.init(true);
+        zookeeperClient = new ZookeeperClient(zkHost);
+        zookeeperClient.init(true);
     }
 
 
     public void init() {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = new ZookeeperClient(zkHost);
-        zookeeperWatcher.init(false);
+        zookeeperClient = new ZookeeperClient(zkHost);
+        zookeeperClient.init(false);
     }
 
     /**
@@ -38,8 +38,8 @@ public class ZkBootstrap {
      */
     public void filterInit(Set<String> paths) {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = new ZookeeperClient(zkHost);
-        zookeeperWatcher.filterInit(paths);
+        zookeeperClient = new ZookeeperClient(zkHost);
+        zookeeperClient.filterInit(paths);
     }
 
     /**
@@ -49,7 +49,7 @@ public class ZkBootstrap {
      */
     public void filterInitWhiteList(Set<String> services) {
         String zkHost = EnvUtil.prepareEnv();
-        zookeeperWatcher = new ZookeeperClient(zkHost);
-        zookeeperWatcher.filterInitWhiteList(services);
+        zookeeperClient = new ZookeeperClient(zkHost);
+        zookeeperClient.filterInitWhiteList(services);
     }
 }
