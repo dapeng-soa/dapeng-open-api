@@ -151,6 +151,12 @@ public class ServiceCache {
                     if (metadata != null) {
                         try (StringReader reader = new StringReader(metadata)) {
                             Service serviceData = JAXB.unmarshal(reader, Service.class);
+
+                            //服务版本  以zk注册的版本为主
+                            if(!serviceData.getMeta().version.equals(version)){
+                                serviceData.getMeta().setVersion(version);
+                            }
+
                             //ServiceName + VersionName for Key
                             //AdminSkuPriceService:1.0.0
                             String serviceKey = getKey(serviceData);
