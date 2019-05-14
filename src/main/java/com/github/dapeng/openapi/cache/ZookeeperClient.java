@@ -215,6 +215,10 @@ public class ZookeeperClient implements Watcher {
             if (children.size() == 0) {
                 //移除这个没有运行服务的相关信息...
                 ServiceCache.removeServiceCache(servicePath, needLoadUrl);
+
+                //移除没有runtime的服务 20190514
+                caches.remove(serviceName);
+
                 LOGGER.info("{} 节点下面没有serviceInfo 信息，当前服务没有运行实例...", servicePath);
             } else {
                 LOGGER.info("获取{}的子节点成功", servicePath);
