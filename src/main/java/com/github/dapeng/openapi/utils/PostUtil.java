@@ -172,7 +172,9 @@ public class PostUtil {
         }
 
         InvocationContextImpl.InvocationContextProxy invocationCtxProxy = InvocationContextImpl.Factory.getInvocationContextProxy();
-        invocationCtx.cookies(invocationCtxProxy.cookies());
+        if(invocationCtxProxy!=null){
+            invocationCtx.cookies(invocationCtxProxy.cookies());
+        }
     }
 
 
