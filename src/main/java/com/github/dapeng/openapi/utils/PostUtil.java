@@ -171,7 +171,7 @@ public class PostUtil {
             invocationCtx.operatorId(Long.valueOf(req.getParameter("operatorId")));
         }
 
-        InvocationContextImpl.InvocationContextProxy invocationCtxProxy = InvocationContextImpl.Factory.getInvocationContextProxy();
+        InvocationContext invocationCtxProxy = InvocationContextImpl.Factory.currentInstance();
         invocationCtx.cookies(invocationCtxProxy.cookies());
     }
 
